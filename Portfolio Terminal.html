@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>דוח מעקב יומי · Portfolio Terminal</title>
+<link rel="stylesheet" href="styles.css" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<div id="loading" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#00ff66;font-family:'JetBrains Mono',monospace;font-size:14px;background:#050807;z-index:200">
+  <span>LOADING data.json ...</span>
+</div>
+
+<!-- Try to load data.json synchronously via XHR before app boots.
+     Falls back to data.js if data.json missing or file:// blocks fetch. -->
+<script>
+(function loadData() {
+  let loaded = false;
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'data.json', false); // sync
+    xhr.send(null);
+    if (xhr.status === 200 || (xhr.status === 0 && xhr.responseText)) {
+      window.PORTFOLIO_DATA = JSON.parse(xhr.responseText);
+      loaded = true;
+    }
+  } catch (e) { /* file:// or CORS — fall through */ }
+
+  function computeDerived() {
+    const D = window.PORTFOLIO_DATA;
+    if (!D || !D.positions) return false;
+    D.positions.forEach(p => {
+      const fx = p.market === "US" ? D.fxRate : 1;
+      p.value = p.qty * p.price;
+      p.valueILS = p.value * fx;
+      p.cost = p.qty * p.avg;
+      p.costILS = p.cost * fx;
+      p.pl = p.value - p.cost;
+      p.plILS = p.pl * fx;
+      p.plPct = (p.pl / p.cost) * 100;
+      p.maDelta = ((p.price - p.ma150) / p.ma150) * 100;
+      p.aboveMA = p.price > p.ma150;
+    });
+    const totalILS = D.positions.reduce((s, p) => s + p.valueILS, 0);
+    const totalCostILS = D.positions.reduce((s, p) => s + p.costILS, 0);
+    D.totals = {
+      valueILS: totalILS + D.cash.ils + D.cash.usd * D.fxRate,
+      investedILS: totalCostILS,
+      plILS: totalILS - totalCostILS,
+      plPct: ((totalILS - totalCostILS) / totalCostILS) * 100,
+      dayPctILS: D.positions.reduce((s, p) => s + (p.day * p.valueILS), 0) / totalILS,
+    };
+    D.positions.forEach(p => p.weight = (p.valueILS / totalILS) * 100);
+    return true;
+  }
+
+  if (loaded) {
+    computeDerived();
+    document.getElementById('loading').style.display = 'none';
+  } else {
+    // emit a script tag that the parser will execute synchronously
+    document.write('<script src="data.js"><\/script>');
+    // after data.js parses, compute derived
+    document.write('<script>(' + (function() {
+      // dummy — actual hook below
+    }).toString() + ')()<\/script>');
+  }
+})();
+</script>
+
+<!-- Fallback path: if data.js was used, run derive now -->
+<script>
+if (window.PORTFOLIO_DATA && !window.PORTFOLIO_DATA.totals) {
+  const D = window.PORTFOLIO_DATA;
+  D.positions.forEach(p => {
+    const fx = p.market === "US" ? D.fxRate : 1;
+    p.value = p.qty * p.price; p.valueILS = p.value * fx;
+    p.cost = p.qty * p.avg; p.costILS = p.cost * fx;
+    p.pl = p.value - p.cost; p.plILS = p.pl * fx;
+    p.plPct = (p.pl / p.cost) * 100;
+    p.maDelta = ((p.price - p.ma150) / p.ma150) * 100;
+    p.aboveMA = p.price > p.ma150;
+  });
+  const totalILS = D.positions.reduce((s, p) => s + p.valueILS, 0);
+  const totalCostILS = D.positions.reduce((s, p) => s + p.costILS, 0);
+  D.totals = {
+    valueILS: totalILS + D.cash.ils + D.cash.usd * D.fxRate,
+    investedILS: totalCostILS,
+    plILS: totalILS - totalCostILS,
+    plPct: ((totalILS - totalCostILS) / totalCostILS) * 100,
+    dayPctILS: D.positions.reduce((s, p) => s + (p.day * p.valueILS), 0) / totalILS,
+  };
+  D.positions.forEach(p => p.weight = (p.valueILS / totalILS) * 100);
+  const ld = document.getElementById('loading'); if (ld) ld.style.display = 'none';
+}
+if (!window.PORTFOLIO_DATA) {
+  document.getElementById('loading').innerHTML =
+    '<div style="text-align:center"><div style="color:#ff3344;margin-bottom:8px">⚠ לא נמצא data.json</div>' +
+    '<div style="color:#6a7a75;font-size:12px">הרץ <code style="color:#ffb000">python -m http.server</code> או ודא ש-data.json קיים</div></div>';
+}
+</script>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+
+</body>
+</html>

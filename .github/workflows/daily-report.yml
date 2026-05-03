@@ -1,0 +1,36 @@
+name: Daily Portfolio Report
+
+on:
+  schedule:
+    # 05:00 UTC = 08:00 IDT (UTC+3), ימי חול בלבד
+    - cron: '0 5 * * 1-5'
+  workflow_dispatch:   # הרצה ידנית מה-GitHub UI
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate & send report
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python send_report.py
+
+      - name: Commit updated data.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --staged --quiet || git commit -m "data: daily update $(date +'%Y-%m-%d')"
+          git push
