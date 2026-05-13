@@ -32,26 +32,94 @@ from generate_report import main as generate_report
 
 # ─── Gmail sender ─────────────────────────────────────────────────────────────
 
+GITHUB_PAGES_BASE = "https://meam3012.github.io/stocks-report"
+
 def send_email(html_path: str, subject: str, total_val: float, day_pct: float):
-    """Send HTML report via Gmail SMTP with App Password."""
+    """Send a short link-email pointing to the GitHub Pages hosted report."""
     if not GMAIL_PASSWORD:
         print("⚠️  GMAIL_APP_PASSWORD not set — skipping email")
         return False
 
-    html_content = Path(html_path).read_text(encoding="utf-8")
+    report_filename = Path(html_path).name
+    report_url = f"{GITHUB_PAGES_BASE}/{report_filename}"
+
+    arrow   = "▲" if day_pct >= 0 else "▼"
+    color   = "#3fb950" if day_pct >= 0 else "#f85149"
+    sign    = "+" if day_pct >= 0 else ""
+    val_fmt = f"₪{total_val:,.0f}"
+
+    html_body = f"""<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f6f8fa;font-family:Arial,sans-serif;direction:rtl;text-align:right;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f8fa;padding:32px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;border:1px solid #d0d7de;overflow:hidden;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#1f2937,#111827);padding:28px 32px;">
+            <p style="margin:0;font-size:20px;font-weight:800;color:#e6edf3;">📊 דוח תיק יומי — מאיר</p>
+            <p style="margin:6px 0 0;font-size:13px;color:#8b949e;">שיטת מיכו | MA150 | {date.today().strftime('%d/%m/%Y')}</p>
+          </td>
+        </tr>
+
+        <!-- Key numbers -->
+        <tr>
+          <td style="padding:28px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="text-align:center;padding:0 8px;">
+                  <p style="margin:0;font-size:12px;color:#57606a;text-transform:uppercase;letter-spacing:0.5px;">שווי תיק</p>
+                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:#1f2328;direction:ltr;">{val_fmt}</p>
+                </td>
+                <td style="text-align:center;padding:0 8px;border-right:1px solid #d0d7de;">
+                  <p style="margin:0;font-size:12px;color:#57606a;text-transform:uppercase;letter-spacing:0.5px;">שינוי יומי</p>
+                  <p style="margin:6px 0 0;font-size:28px;font-weight:800;color:{color};direction:ltr;">{arrow} {sign}{day_pct:.1f}%</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- CTA Button -->
+        <tr>
+          <td style="padding:0 32px 32px;text-align:center;">
+            <a href="{report_url}"
+               style="display:inline-block;background:#1f6feb;color:#ffffff;font-size:15px;font-weight:700;
+                      text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
+              📈 פתח דוח מלא
+            </a>
+            <p style="margin:16px 0 0;font-size:11px;color:#8c959f;">
+              או העתק: <a href="{report_url}" style="color:#1f6feb;">{report_url}</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f6f8fa;padding:16px 32px;border-top:1px solid #d0d7de;text-align:center;">
+            <p style="margin:0;font-size:11px;color:#8c959f;">נוצר אוטומטית | Yahoo Finance | שיטת מיכו</p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = f"📊 דוח תיק <{GMAIL_USER}>"
     msg["To"]      = SEND_TO_EMAIL
-
-    msg.attach(MIMEText(html_content, "html", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(GMAIL_USER, GMAIL_PASSWORD)
             server.sendmail(GMAIL_USER, SEND_TO_EMAIL, msg.as_bytes())
-        print(f"✅ מייל נשלח ל-{SEND_TO_EMAIL}")
+        print(f"✅ מייל נשלח ל-{SEND_TO_EMAIL} → {report_url}")
         return True
     except Exception as e:
         print(f"❌ שגיאת מייל: {e}")
