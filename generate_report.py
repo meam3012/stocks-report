@@ -19,7 +19,7 @@ PORTFOLIO = [
     {"ticker": "AMZN",    "name": "Amazon",           "shares": 62,    "currency": "USD", "avg": 178.40},
     {"ticker": "TSLA",    "name": "Tesla",             "shares": 14,    "currency": "USD", "avg": 242.10},
     {"ticker": "JOBY",    "name": "Joby Aviation",     "shares": 840,   "currency": "USD", "avg": 5.80},
-    {"ticker": "BKR",     "name": "Baker Hughes",      "shares": 127,   "currency": "USD", "avg": 38.40},
+    {"ticker": "NASA",    "name": "TEMA Space Innovators ETF", "shares": 190, "currency": "USD", "avg": 41.57},
     {"ticker": "BMNR",    "name": "Bitmine Immersion", "shares": 234,   "currency": "USD", "avg": 52.80},
     {"ticker": "QCOM",    "name": "Qualcomm",          "shares": 8,     "currency": "USD", "avg": 168.20},
     {"ticker": "META",    "name": "Meta Platforms",    "shares": 1,     "currency": "USD", "avg": 482.00},
