@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>דוח תיק — 29 במאי 2026</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      --bg:        #0d1117;
+      --card:      #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --green:     #3fb950;
+      --green-bg:  #0d2818;
+      --red:       #f85149;
+      --red-bg:    #2d0a0a;
+      --yellow:    #d29922;
+      --yellow-bg: #271d07;
+      --orange:    #e3963e;
+      --orange-bg: #271807;
+      --blue:      #58a6ff;
+      --accent:    #1f6feb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Heebo', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      direction: rtl;
+      text-align: right;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-title h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+    .header-title p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .header-value {
+      text-align: left;
+    }
+    .header-value .total {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+    .header-value .change {
+      font-size: 15px;
+      font-weight: 600;
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+
+    /* Cards row */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .card .value {
+      font-size: 20px;
+      font-weight: 700;
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+    .card .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      direction: ltr;
+      unicode-bidi: embed;
+    }
+
+    /* Tables */
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      background: #1c2333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      padding: 10px 14px;
+      background: #1c2333;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #21262d;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1c2333; }
+
+    .center { text-align: center; }
+    .mono { font-family: 'SF Mono', 'Fira Code', monospace; }
+    .bold { font-weight: 700; }
+
+    .ticker {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--blue);
+      font-family: monospace;
+    }
+    .name-col { color: var(--text); }
+
+    /* Signal colors */
+    .up      { color: var(--green) !important; }
+    .dn      { color: var(--red)   !important; }
+    .bullish { color: var(--green) !important; }
+    .neutral { color: var(--yellow)!important; }
+    .warning { color: var(--orange)!important; }
+    .bearish { color: var(--red)   !important; }
+
+    .row-bullish { border-right: 3px solid var(--green); }
+    .row-neutral { border-right: 3px solid var(--yellow); }
+    .row-warning { border-right: 3px solid var(--orange); }
+    .row-bearish { border-right: 3px solid var(--red); }
+
+    .signal-cell { font-size: 12px; font-weight: 600; }
+
+    /* Market table */
+    .market-table td:first-child { font-weight: 700; }
+    .port-row td {
+      background: #1a2332 !important;
+      font-weight: 700;
+    }
+
+    /* Alert box */
+    .alert {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      border-right: 4px solid;
+    }
+    .alert-red    { background: var(--red-bg);    border-color: var(--red);    color: #ff7b72; }
+    .alert-yellow { background: var(--yellow-bg); border-color: var(--yellow); color: #e3b341; }
+    .alert-green  { background: var(--green-bg);  border-color: var(--green);  color: #56d364; }
+
+    /* Bar chart */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .bar-label { width: 60px; font-family: monospace; color: var(--blue); }
+    .bar-track { flex: 1; background: #21262d; border-radius: 4px; height: 16px; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 4px; display: flex; align-items: center; padding: 0 6px;
+                  font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }
+    .bar-pct   { width: 48px; text-align: left; color: var(--muted); font-size: 11px; direction: ltr; unicode-bidi: embed; }
+
+    /* News section */
+    .news-stock-header {
+      font-weight: 700;
+      font-size: 13px;
+      margin: 16px 0 8px 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .news-stock-header:first-child { margin-top: 0; }
+    .news-list { list-style: none; padding: 0; margin: 0 0 4px 0; }
+    .news-list li {
+      padding: 7px 0;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .news-list li:last-child { border-bottom: none; }
+    .news-link { color: var(--text); text-decoration: none; font-size: 13px; line-height: 1.4; }
+    .news-link:hover { color: var(--blue); text-decoration: underline; }
+    .news-meta { color: var(--muted); font-size: 11px; direction: ltr; unicode-bidi: embed; }
+    .no-news { color: var(--muted); font-size: 13px; font-style: italic; }
+    .news-bullets {
+      margin: 5px 0 0 0;
+      padding-right: 16px;
+      padding-left: 0;
+      list-style: disc;
+    }
+    .news-bullets li {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 1px 0;
+      border-bottom: none;
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 20px;
+      padding: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { padding: 10px; font-size: 12px; }
+      .header { flex-direction: column; }
+      .header-value { text-align: right; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-title">
+    <h1>📊 דוח תיק — מאיר</h1>
+    <p>שיטת מיכו | MA150 | נתונים: Yahoo Finance</p>
+    <p style="margin-top:6px; color:#8b949e;">📅 29 במאי 2026 | מחירי סגירה: יום קודם</p>
+  </div>
+  <div class="header-value">
+    <div class="total">₪196,570</div>
+    <div class="change up">
+      ▲ +2.6% (₪5,021) ביום
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MARKET CARDS ═══════════════════════════════════════════════════════ -->
+<div class="section" style="margin-bottom:20px;">
+  <div class="section-header">🌍 מצב שווקים</div>
+  <table class="market-table">
+    <thead>
+      <tr>
+        <th>מדד</th>
+        <th>ערך</th>
+        <th>שינוי יומי</th>
+        <th>הערה</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="bold">S&P 500</td><td>7,564</td><td class="up">+0.6%</td><td style="color:var(--muted); font-size:12px;">+28% שנתי</td></tr>
+      <tr><td class="bold">TA-125</td><td>4,424</td><td class="up">+0.6%</td><td></td></tr>
+      <tr class="port-row">
+        <td>🗂️ תיק מאיר</td>
+        <td>₪196,570</td>
+        <td class="up">+2.6%</td>
+        <td style="color:var(--muted); font-size:12px;">₪5,021 ביום</td>
+      </tr>
+      <tr>
+        <td class="bold">USD/ILS</td>
+        <td class="mono">2.8096</td>
+        <td>—</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══ PORTFOLIO TABLE ════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">📋 לוח בקרה — תיק מלא</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>טיקר</th>
+        <th>שם</th>
+        <th>כמות</th>
+        <th>מחיר</th>
+        <th>יומי%</th>
+        <th>MA150%</th>
+        <th>שווי (₪)</th>
+        <th>% תיק</th>
+        <th>סיגנל מיכו</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+        <tr class="row-bullish">
+          <td class="center">1</td>
+          <td class="ticker">AMZN</td>
+          <td class="name-col">Amazon</td>
+          <td class="center">62</td>
+          <td class="center mono">$274.00</td>
+          <td class="center up mono">+0.8%</td>
+          <td class="center bullish bold mono">+17.5%</td>
+          <td class="center mono bold">₪47,729</td>
+          <td class="center mono">24.3%</td>
+          <td class="center signal-cell">BULLISH 🟢</td>
+        </tr>
+        <tr class="row-bullish">
+          <td class="center">2</td>
+          <td class="ticker">ACCL</td>
+          <td class="name-col">אקסל סולושנס</td>
+          <td class="center">14789</td>
+          <td class="center mono">₪2.89</td>
+          <td class="center up mono">+5.9%</td>
+          <td class="center bullish bold mono">+57.4%</td>
+          <td class="center mono bold">₪42,740</td>
+          <td class="center mono">21.7%</td>
+          <td class="center signal-cell">BULLISH 🟢</td>
+        </tr>
+        <tr class="row-neutral">
+          <td class="center">3</td>
+          <td class="ticker">JOBY</td>
+          <td class="name-col">Joby Aviation</td>
+          <td class="center">840</td>
+          <td class="center mono">$12.30</td>
+          <td class="center up mono">+7.1%</td>
+          <td class="center neutral bold mono">+2.9%</td>
+          <td class="center mono bold">₪29,029</td>
+          <td class="center mono">14.8%</td>
+          <td class="center signal-cell">NEUTRAL 🟡</td>
+        </tr>
+        <tr class="row-bullish">
+          <td class="center">4</td>
+          <td class="ticker">NASA</td>
+          <td class="name-col">TEMA Space Innovators ETF</td>
+          <td class="center">190</td>
+          <td class="center mono">$41.83</td>
+          <td class="center dn mono">-0.1%</td>
+          <td class="center bullish bold mono">+32.1%</td>
+          <td class="center mono bold">₪22,330</td>
+          <td class="center mono">11.4%</td>
+          <td class="center signal-cell">BULLISH 🟢</td>
+        </tr>
+        <tr class="row-neutral">
+          <td class="center">5</td>
+          <td class="ticker">TSLA</td>
+          <td class="name-col">Tesla</td>
+          <td class="center">14</td>
+          <td class="center mono">$442.10</td>
+          <td class="center up mono">+0.4%</td>
+          <td class="center neutral bold mono">+5.7%</td>
+          <td class="center mono bold">₪17,390</td>
+          <td class="center mono">8.8%</td>
+          <td class="center signal-cell">NEUTRAL 🟡</td>
+        </tr>
+        <tr class="row-neutral">
+          <td class="center">6</td>
+          <td class="ticker">MLSR</td>
+          <td class="name-col">מליסרון</td>
+          <td class="center">37</td>
+          <td class="center mono">₪444.10</td>
+          <td class="center dn mono">-1.6%</td>
+          <td class="center neutral bold mono">+3.9%</td>
+          <td class="center mono bold">₪16,432</td>
+          <td class="center mono">8.4%</td>
+          <td class="center signal-cell">NEUTRAL 🟡</td>
+        </tr>
+        <tr class="row-bearish">
+          <td class="center">7</td>
+          <td class="ticker">BMNR</td>
+          <td class="name-col">Bitmine Immersion</td>
+          <td class="center">234</td>
+          <td class="center mono">$19.25</td>
+          <td class="center up mono">+2.3%</td>
+          <td class="center bearish bold mono">-28.7%</td>
+          <td class="center mono bold">₪12,656</td>
+          <td class="center mono">6.4%</td>
+          <td class="center signal-cell">BEARISH 🔴</td>
+        </tr>
+        <tr class="row-bullish">
+          <td class="center">8</td>
+          <td class="ticker">QCOM</td>
+          <td class="name-col">Qualcomm</td>
+          <td class="center">8</td>
+          <td class="center mono">$243.29</td>
+          <td class="center up mono">+4.2%</td>
+          <td class="center bullish bold mono">+50.4%</td>
+          <td class="center mono bold">₪5,468</td>
+          <td class="center mono">2.8%</td>
+          <td class="center signal-cell">BULLISH 🟢</td>
+        </tr>
+        <tr class="row-warning">
+          <td class="center">9</td>
+          <td class="ticker">META</td>
+          <td class="name-col">Meta Platforms</td>
+          <td class="center">1</td>
+          <td class="center mono">$635.29</td>
+          <td class="center up mono">+0.0%</td>
+          <td class="center warning bold mono">-0.9%</td>
+          <td class="center mono bold">₪1,785</td>
+          <td class="center mono">0.9%</td>
+          <td class="center signal-cell">WATCH 🟠</td>
+        </tr>
+        <tr class="row-bullish">
+          <td class="center">10</td>
+          <td class="ticker">ORCL</td>
+          <td class="name-col">Oracle</td>
+          <td class="center">0.8</td>
+          <td class="center mono">$203.70</td>
+          <td class="center up mono">+6.7%</td>
+          <td class="center bullish bold mono">+10.0%</td>
+          <td class="center mono bold">₪458</td>
+          <td class="center mono">0.2%</td>
+          <td class="center signal-cell">BULLISH 🟢</td>
+        </tr>
+        <tr class="row-bullish">
+          <td class="center">11</td>
+          <td class="ticker">MARA</td>
+          <td class="name-col">MARA Holdings</td>
+          <td class="center">9</td>
+          <td class="center mono">$14.07</td>
+          <td class="center dn mono">-1.8%</td>
+          <td class="center bullish bold mono">+27.0%</td>
+          <td class="center mono bold">₪356</td>
+          <td class="center mono">0.2%</td>
+          <td class="center signal-cell">BULLISH 🟢</td>
+        </tr>
+        <tr class="row-warning">
+          <td class="center">12</td>
+          <td class="ticker">PLTR</td>
+          <td class="name-col">Palantir</td>
+          <td class="center">0.49</td>
+          <td class="center mono">$143.34</td>
+          <td class="center up mono">+8.2%</td>
+          <td class="center warning bold mono">-9.6%</td>
+          <td class="center mono bold">₪197</td>
+          <td class="center mono">0.1%</td>
+          <td class="center signal-cell">WATCH 🟠</td>
+        </tr>
+    </tbody>
+    <tfoot>
+      <tr style="background:#1c2333; font-weight:700;">
+        <td colspan="7" style="text-align:left; padding-right:14px; color:var(--muted);">סה"כ</td>
+        <td class="center mono bold">₪196,570</td>
+        <td class="center">100%</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- ═══ SIGNAL SUMMARY ════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">🎯 פיזור סיגנלים — שיטת מיכו</div>
+  <div style="padding: 16px 20px;">
+
+    <div class="bar-row">
+      <div class="bar-label">🟢 BULLISH</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:61%; background:#3fb950;">₪119,082</div>
+      </div>
+      <div class="bar-pct">60.6%</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">🟡 NEUTRAL</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:32%; background:#d29922;">₪62,850</div>
+      </div>
+      <div class="bar-pct">32.0%</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">🟠 WATCH</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:1%; background:#e3963e;">₪1,982</div>
+      </div>
+      <div class="bar-pct">1.0%</div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">🔴 BEARISH</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:6%; background:#f85149;">₪12,656</div>
+      </div>
+      <div class="bar-pct">6.4%</div>
+    </div>
+    <div style="margin-top:14px; font-size:12px; color:var(--muted);">
+      ⚠️ <strong style="color:#d29922">
+      7.4% מהתיק בסיגנל שלילי (מתחת ל-MA150)
+      </strong>
+    </div>
+  </div>
+</div>
+<div class="section">
+  <div class="section-header">⚡ התראות</div>
+  <div style="padding: 16px 20px;">
+    <div class="alert alert-green">🟢 ACCL.TA (אקסל סולושנס) — +57.4% מעל MA150 | ביצוע חזק</div>
+    <div class="alert alert-green">🟢 NASA (TEMA Space Innovators ETF) — +32.1% מעל MA150 | ביצוע חזק</div>
+    <div class="alert alert-red">🔴 BMNR (Bitmine Immersion) — מתחת MA150 ב--28.7% | חשיפה: 6.4% מהתיק (₪12,656)</div>
+    <div class="alert alert-green">🟢 QCOM (Qualcomm) — +50.4% מעל MA150 | ביצוע חזק</div>
+    <div class="alert alert-green">🟢 MARA (MARA Holdings) — +27.0% מעל MA150 | ביצוע חזק</div>
+    <div class="alert alert-yellow">🟠 PLTR — שינוי חד: +8.2% ביום</div>
+  </div>
+</div>
+
+<!-- ═══ NEWS ══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">📰 חדשות עדכניות — 48 שעות אחרונות</div>
+  <div style="padding: 16px 20px;">
+    <div class="news-stock-header">🟢 <span class="ticker">AMZN</span> &nbsp;Amazon</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/m/a7a5f8ca-cd6b-3fbc-91c5-ccca53a5eccb/the-chip-rally-has-gone.html" target="_blank" class="news-link">עצרת הצ'יפים הפכה לפרבולית. הגיע הזמן להפריד את העמודים מהמתחזים.</a><span class="news-meta">Barrons.com · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/b7a1c98d-cf64-30a1-b306-d64f3e5db6d1/navellier-to-spacex-buyers%3A.html" target="_blank" class="news-link">Navellier לרוכשי SpaceX: המתן למהירות מילוט</a><span class="news-meta">TheStreet · 4ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/video/dell-shares-rocket-bullish-forecast-033820734.html" target="_blank" class="news-link">Dell חולקת רקטה על תחזית שורית לביקוש לבינה מלאכותית</a><span class="news-meta">Reuters Videos · 5ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/4232ecf8-0dd0-30f7-b834-2372272b7793/asts-stock-slides-overnight%3A.html" target="_blank" class="news-link">מניית ASTS גולשת בן לילה: פיצוץ מוצא כחול מעלה פחדים חדשים לקראת השקת 45 לוויינים</a><span class="news-meta">Stocktwits · 5ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟡 <span class="ticker">JOBY</span> &nbsp;Joby Aviation</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/m/3cfb7d06-c8ba-3a3f-9665-37e7484351fd/this-%2412-stock-has-10x.html" target="_blank" class="news-link">למניה הזו של 12 דולר יש פוטנציאל פי 10, לפי וול סטריט</a><span class="news-meta">Motley Fool · 8ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/why-joby-aviation-joby-14-060630334.html" target="_blank" class="news-link">מדוע ג'ובי תעופה (JOBY) עלתה ב-14.0% לאחר טיסת הדגמה של ניו יורק אלקטריק Air-Taxi - ומה הלאה</a><span class="news-meta">Simply Wall St. · 26ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/c9e1c919-1c2f-3b35-b1a2-c5990d4050d7/best-transportation-stocks-to.html" target="_blank" class="news-link">מניות התחבורה הטובות ביותר לקנייה בשנת 2026</a><span class="news-meta">Motley Fool · 39ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/why-joby-aviation-stock-climbing-123539610.html" target="_blank" class="news-link">מדוע מניית Joby Aviation מטפסת היום</a><span class="news-meta">GuruFocus.com · 44ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟢 <span class="ticker">NASA</span> &nbsp;TEMA Space Innovators ETF</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/m/54c1820b-b08d-397b-8486-ec017df218c2/nasa-isn%27t-the-only-space-etf.html" target="_blank" class="news-link">נאס"א היא לא תעודת סל החלל היחידה שתופסת את גל SpaceX</a><span class="news-meta">etf.com · 34ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/article/spacex-is-powering-a-new-etf-race-chart-of-the-day-100000512.html" target="_blank" class="news-link">SpaceX מפעילה מרוץ תעודות סל חדש: תרשים היום</a><span class="news-meta">Yahoo Finance · 46ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟡 <span class="ticker">TSLA</span> &nbsp;Tesla</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/assessing-tesla-tsla-valuation-recent-042614685.html" target="_blank" class="news-link">הערכת הערכת שווי של טסלה (TSLA) לאחר חוזק מחירי מניות לאחרונה ונרטיבים צמיחה נועזים</a><span class="news-meta">Simply Wall St. · 4ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/56f89520-161a-3f51-9d94-1a6bd9b1d71f/tsla-stock-slips-after-hours%3A.html" target="_blank" class="news-link">מלאי TSLA מחליק לאחר שעות הפעילות: עופרת Robotaxi המאסיבית של Waymo מטילה צל חדש על ה-FSD Push של טסלה</a><span class="news-meta">Stocktwits · 6ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/sectors/technology/articles/waymo-dominates-autonomous-vehicle-registrations-001435724.html" target="_blank" class="news-link">Waymo שולט ברישום רכב אוטונומי כאשר טסלה משתרכת מאחור</a><span class="news-meta">TechCrunch · 8ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/04da26d2-e9cf-3d6e-ba42-ad5255f3319b/ford-stock-is-moving-like.html" target="_blank" class="news-link">מניית פורד זזה עכשיו כמו טסלה. התוצאות שלו לא יכולות להצדיק את הפרימיום.</a><span class="news-meta">Barchart · 9ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟡 <span class="ticker">MLSR</span> &nbsp;מליסרון</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/m/d0ea3044-e950-3fa4-8395-25b91e29370e/university-of-edinburgh.html" target="_blank" class="news-link">אוניברסיטת אדינבורו מעניקה זכויות להשבת מתכות של פסולת אלקטרונית</a><span class="news-meta">Mining Technology · עכשיו</span></li>
+      <li><a href="https://finance.yahoo.com/m/639fc9d6-b55c-3ef8-8aca-f52943706cda/eu-investigates-possible.html" target="_blank" class="news-link">האיחוד האירופי חוקר סובסידיות זרות אפשריות בהצעת JD.com עבור Ceconomy</a><span class="news-meta">Retail Insight Network · עכשיו</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/gold-corporation-goro-announces-first-083930134.html" target="_blank" class="news-link">Gold Resource Corporation (GORO) מכריזה על תוצאות הרבעון הראשון של 2026</a><span class="news-meta">Insider Monkey · עכשיו</span></li>
+      <li><a href="https://finance.yahoo.com/markets/commodities/articles/datavault-ai-signs-agreement-offer-083854489.html" target="_blank" class="news-link">Datavault AI חותם על הסכם להציע מסחר עולמי 24/7 בכרייה מסורתית, סחורות אנרגיה</a><span class="news-meta">MT Newswires · עכשיו</span></li>
+    </ul>
+    <div class="news-stock-header">🔴 <span class="ticker">BMNR</span> &nbsp;Bitmine Immersion</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/markets/crypto/articles/bitcoin-ethereum-xrp-dogecoin-stall-015455950.html" target="_blank" class="news-link">דוכן ביטקוין, Ethereum, XRP, Dogecoin על הפסקת האש באיראן: אנליסט מציע שקוני BTC עשויים לקחת 'שליטה'</a><span class="news-meta">Benzinga · 6ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/98b0c18f-465a-3450-b702-baace62281a5/ethereum-price-falls-below.html" target="_blank" class="news-link">מחיר האת'ריום יורד מתחת ל-2,000 דולר כאשר שיחת ה-'Supercycle' של טום לי עומדת בפני בדיקה</a><span class="news-meta">CCN · 21ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/crypto/articles/bitcoin-ethereum-xrp-dogecoin-tumble-021732460.html" target="_blank" class="news-link">ביטקוין, Ethereum, XRP, Dogecoin נפלו על רקע דיווח על מתקפות טריות של ארה"ב באיראן: אנליסט מסמן 'הגדרה שברירית מבנית' מתפתח עבור BTC</a><span class="news-meta">Benzinga · 30ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/676b2885-da5d-3fb5-a6d3-2a849852a804/ethereum-traders-grow.html" target="_blank" class="news-link">סוחרי Ethereum צומחים באופן דובי יותר ויותר כאשר תעודות הסל מדממות, ETH שוקעת קרוב ל-2,000 דולר</a><span class="news-meta">decrypt · 35ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟢 <span class="ticker">QCOM</span> &nbsp;Qualcomm</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/stellantis-deepens-global-tech-alliances-020659913.html" target="_blank" class="news-link">Stellantis מעמיקה בריתות טכנולוגיות גלובליות כדי לקדם פלטפורמות EV בהגדרת תוכנה</a><span class="news-meta">Simply Wall St. · 6ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/f1ff3d70-659d-3052-819a-5f469d64e2c3/qualcomm-stock-just-hit-new.html" target="_blank" class="news-link">מניית קוואלקום בדיוק הגיעה לשיאים חדשים. משקיעים יכולים להודות לעסקת ByteDance.</a><span class="news-meta">Barchart · 12ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/def17014-cba3-3c97-8592-f1d576ac05a7/while-nvidia-battles-amd%2C.html" target="_blank" class="news-link">בזמן ש-Nvidia נלחמת ב-AMD, קוואלקום חתמה בשקט על עסקת הבינה המלאכותית הגדולה בתולדותיה. עם ByteDance</a><span class="news-meta">24/7 Wall St. · 14ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/arm-vs-snps-ai-chip-131100445.html" target="_blank" class="news-link">ARM לעומת SNPS: איזו מניית עיצוב שבב AI צריכים למשקיעים לקנות?</a><span class="news-meta">Zacks · 19ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟠 <span class="ticker">META</span> &nbsp;Meta Platforms</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/why-meta-meta-among-12-060531956.html" target="_blank" class="news-link">הנה הסיבה שמטה (META) היא בין 12 המניות הרווחיות ביותר להשקעה בהן</a><span class="news-meta">Insider Monkey · 2ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/5c6b3f03-6689-3b0a-bdbd-ee19127d2fa2/peter-schiff%3A-the-%241-trillion.html" target="_blank" class="news-link">פיטר שיף: בועת ה-AI CapEx של טריליון דולר מסתירה הקצאת הון עצומה</a><span class="news-meta">24/7 Wall St. · 9ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/sectors/technology/articles/wiwynn-warns-ai-supply-crunch-221449458.html" target="_blank" class="news-link">וויווין מזהיר כי מחנק אספקת הבינה המלאכותית עשוי להימשך עד 2027-2028</a><span class="news-meta">GuruFocus.com · 10ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/meta-announces-quarterly-cash-dividend-215600046.html" target="_blank" class="news-link">Meta מכריזה על דיבידנד רבעוני במזומן</a><span class="news-meta">PR Newswire · 10ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟢 <span class="ticker">ORCL</span> &nbsp;Oracle</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/m/e6a988c6-fba7-35ee-9991-7f7e168ffe62/if-it-walks-like-a-bubble-and.html" target="_blank" class="news-link">אם זה הולך כמו בועה ומנקרט כמו בועה, אז זה כנראה בועה</a><span class="news-meta">Barrons.com · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/guidewire-software-varonis-systems-shares-052600034.html" target="_blank" class="news-link">מניות Guidewire Software ו-Varonis Systems נוסקות, מה שאתה צריך לדעת</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/why-soundhound-ai-soun-stock-051800605.html" target="_blank" class="news-link">מדוע מניית SoundHound AI (SOUN) עולה היום</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/oracle-orcl-shares-skyrocket-know-051000953.html" target="_blank" class="news-link">אורקל (ORCL) משתפת שחקים, מה שאתה צריך לדעת</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟢 <span class="ticker">MARA</span> &nbsp;MARA Holdings</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/m/20123068-67fa-3e51-b9eb-8495cdc0df22/tesla-and-spacex-merger-would.html" target="_blank" class="news-link">מיזוג טסלה ו-SpaceX יהפוך את אילון מאסק למחזיק ביטקוין מרכזי</a><span class="news-meta">CryptoProwl · 19ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/m/2b5ed823-769f-341a-b0e0-0327b057eb88/bitcoin-companies-are.html" target="_blank" class="news-link">חברות ביטקוין מוציאות מיליונים על אבטחה, כולל מכוניות משוריינות</a><span class="news-meta">Blockspace · 35ש' לפני</span></li>
+    </ul>
+    <div class="news-stock-header">🟠 <span class="ticker">PLTR</span> &nbsp;Palantir</div>
+    <ul class="news-list">
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/guidewire-software-varonis-systems-shares-052600034.html" target="_blank" class="news-link">מניות Guidewire Software ו-Varonis Systems נוסקות, מה שאתה צריך לדעת</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/why-soundhound-ai-soun-stock-051800605.html" target="_blank" class="news-link">מדוע מניית SoundHound AI (SOUN) עולה היום</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/oracle-orcl-shares-skyrocket-know-051000953.html" target="_blank" class="news-link">אורקל (ORCL) משתפת שחקים, מה שאתה צריך לדעת</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+      <li><a href="https://finance.yahoo.com/markets/stocks/articles/workday-doximity-shares-soaring-know-050200003.html" target="_blank" class="news-link">מניות יום העבודה והדוקסימיטי נוסקות, מה שאתה צריך לדעת</a><span class="news-meta">StockStory · 3ש' לפני</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ═══ FOOTER ════════════════════════════════════════════════════════════ -->
+<div class="footer">
+  נוצר: 29/05/2026 00:00 |
+  מקור: Yahoo Finance API (חינמי) |
+  שיטת מיכו: מעל MA150 = בולישי | מתחת MA150 = סיגנל יציאה |
+  USD/ILS: 2.8096
+</div>
+
+</body>
+</html>
