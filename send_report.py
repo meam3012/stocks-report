@@ -9,10 +9,14 @@ import smtplib
 import json
 import sys
 import os
+import time
+import argparse
+import subprocess
 import requests
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from datetime import date, datetime
 
 # ─── Configuration ────────────────────────────────────────────────────────────
@@ -30,16 +34,73 @@ WHATSAPP_TO    = "972506319165"   # Meir's number
 sys.path.insert(0, str(Path(__file__).parent))
 from generate_report import main as generate_report
 
-# ─── Gmail sender ─────────────────────────────────────────────────────────────
+# ─── Publishing to GitHub Pages ──────────────────────────────────────────────
 
 GITHUB_PAGES_BASE = "https://meam3012.github.io/stocks-report"
+REPO_DIR = Path(__file__).parent
 
-def send_email(html_path: str, subject: str, total_val: float, day_pct: float):
-    """Send a short link-email pointing to the GitHub Pages hosted report."""
-    if not GMAIL_PASSWORD:
-        print("⚠️  GMAIL_APP_PASSWORD not set — skipping email")
+
+def _git(*args, check=True):
+    return subprocess.run(["git", "-C", str(REPO_DIR), *args],
+                          capture_output=True, text=True, timeout=120, check=check)
+
+
+def publish_report(html_path: str) -> bool:
+    """Commit + push the report so its GitHub Pages URL actually resolves.
+
+    Without this the email links to a file that only exists on this machine.
+    Returns True only once the URL is confirmed live.
+    """
+    name = Path(html_path).name
+    data_path = REPO_DIR / "data.json"
+    try:
+        # data.json is regenerated every run and also committed by the Action, so a
+        # plain rebase conflicts daily. Hold ours aside, sync, then put ours back.
+        fresh = data_path.read_bytes() if data_path.exists() else None
+        _git("checkout", "--", "data.json", check=False)
+
+        # Local clone drifts behind the GitHub Action's daily commits — rebase first.
+        _git("pull", "--rebase", "--autostash", "origin", "main")
+
+        if fresh is not None:
+            data_path.write_bytes(fresh)
+        _git("add", "data.json", name)
+        staged = _git("diff", "--staged", "--quiet", check=False)
+        if staged.returncode != 0:          # non-zero == there are staged changes
+            _git("commit", "-m", f"data: daily update {date.today():%Y-%m-%d}")
+        _git("push", "origin", "main")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ פרסום ל-GitHub נכשל: {(e.stderr or e.stdout or '').strip()[:200]}")
+        return False
+    except Exception as e:
+        print(f"❌ פרסום ל-GitHub נכשל: {e}")
         return False
 
+    # Pages needs a moment to rebuild — confirm before we promise the link works.
+    url = f"{GITHUB_PAGES_BASE}/{name}"
+    for attempt in range(12):
+        try:
+            if requests.head(url, timeout=10).status_code == 200:
+                print(f"✅ פורסם ל-GitHub Pages ({attempt * 10}s)")
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(10)
+
+    print("⚠️  הדוח נדחף אך ה-URL עדיין לא חי — המייל יישלח עם הדוח כקובץ מצורף")
+    return False
+
+
+# ─── Gmail sender ─────────────────────────────────────────────────────────────
+
+def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
+               published: bool = True, warnings: list | None = None):
+    """Send a short link-email pointing to the GitHub Pages hosted report."""
+    if not GMAIL_PASSWORD:
+        print("❌ GMAIL_APP_PASSWORD לא מוגדר — לא ניתן לשלוח מייל")
+        return False
+
+    warnings = warnings or []
     report_filename = Path(html_path).name
     report_url = f"{GITHUB_PAGES_BASE}/{report_filename}"
 
@@ -47,6 +108,38 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float):
     color   = "#3fb950" if day_pct >= 0 else "#f85149"
     sign    = "+" if day_pct >= 0 else ""
     val_fmt = f"₪{total_val:,.0f}"
+
+    # A number computed from a partial portfolio must never look clean.
+    warn_html = ""
+    if warnings:
+        items = "".join(f"<li style='margin:2px 0;'>{w}</li>" for w in warnings)
+        warn_html = f"""
+        <tr>
+          <td style="padding:16px 32px 0;">
+            <div style="background:#fff8c5;border:1px solid #d4a72c;border-radius:8px;padding:12px 16px;">
+              <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#7d4e00;">⚠️ שימו לב</p>
+              <ul style="margin:0;padding-right:18px;font-size:12px;color:#7d4e00;line-height:1.6;">{items}</ul>
+            </div>
+          </td>
+        </tr>"""
+
+    if published:
+        cta_html = f"""
+            <a href="{report_url}"
+               style="display:inline-block;background:#1f6feb;color:#ffffff;font-size:15px;font-weight:700;
+                      text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
+              📈 פתח דוח מלא
+            </a>
+            <p style="margin:16px 0 0;font-size:11px;color:#8c959f;">
+              או העתק: <a href="{report_url}" style="color:#1f6feb;">{report_url}</a>
+            </p>"""
+    else:
+        cta_html = """
+            <div style="background:#ddf4ff;border:1px solid #54aeff;border-radius:8px;padding:14px 16px;">
+              <p style="margin:0;font-size:13px;color:#0a3069;">
+                📎 הדוח המלא מצורף כקובץ למייל הזה (הפרסום המקוון לא הושלם).
+              </p>
+            </div>"""
 
     html_body = f"""<!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -63,7 +156,7 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float):
             <p style="margin:6px 0 0;font-size:13px;color:#8b949e;">שיטת מיכו | MA150 | {date.today().strftime('%d/%m/%Y')}</p>
           </td>
         </tr>
-
+{warn_html}
         <!-- Key numbers -->
         <tr>
           <td style="padding:28px 32px;">
@@ -85,14 +178,7 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float):
         <!-- CTA Button -->
         <tr>
           <td style="padding:0 32px 32px;text-align:center;">
-            <a href="{report_url}"
-               style="display:inline-block;background:#1f6feb;color:#ffffff;font-size:15px;font-weight:700;
-                      text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
-              📈 פתח דוח מלא
-            </a>
-            <p style="margin:16px 0 0;font-size:11px;color:#8c959f;">
-              או העתק: <a href="{report_url}" style="color:#1f6feb;">{report_url}</a>
-            </p>
+{cta_html}
           </td>
         </tr>
 
@@ -109,11 +195,20 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float):
 </body>
 </html>"""
 
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"]    = f"📊 דוח תיק <{GMAIL_USER}>"
     msg["To"]      = SEND_TO_EMAIL
     msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    # If the hosted link isn't live, the report itself rides along.
+    if not published:
+        try:
+            part = MIMEApplication(Path(html_path).read_bytes(), _subtype="octet-stream")
+            part.add_header("Content-Disposition", "attachment", filename=report_filename)
+            msg.attach(part)
+        except Exception as e:
+            print(f"⚠️  צירוף הדוח נכשל: {e}")
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -211,7 +306,8 @@ _שיטת מיכו: מעל MA150 = בולישי | מתחת = סיגנל יציא
 def send_whatsapp(message: str) -> bool:
     """Send via local WhatsApp bridge (whatsapp-web.js)."""
     try:
-        payload = {"phone": WHATSAPP_TO, "message": message}
+        # The bridge (whatsapp-mcp) expects "recipient" — "phone" returns 400.
+        payload = {"recipient": WHATSAPP_TO, "message": message}
         r = requests.post(WHATSAPP_URL, json=payload, timeout=10)
         if r.status_code == 200:
             print(f"✅ WhatsApp נשלח ל-{WHATSAPP_TO}")
@@ -228,7 +324,22 @@ def send_whatsapp(message: str) -> bool:
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+def parse_args():
+    p = argparse.ArgumentParser(description="Daily portfolio report — generate, publish, send")
+    p.add_argument("--no-email",     action="store_true", help="skip the email")
+    p.add_argument("--no-whatsapp",  action="store_true", help="skip WhatsApp (bridge is local-only)")
+    p.add_argument("--no-publish",   action="store_true", help="skip commit/push to GitHub Pages")
+    p.add_argument("--whatsapp-only", action="store_true",
+                   help="shorthand for --no-email --no-publish (local run; the Action owns the email)")
+    a = p.parse_args()
+    if a.whatsapp_only:
+        a.no_email = a.no_publish = True
+    return a
+
+
 def main():
+    args = parse_args()
+
     print(f"\n{'='*50}")
     print(f"📊 דוח תיק יומי — {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     print(f"{'='*50}\n")
@@ -241,31 +352,71 @@ def main():
     day_ils   = summary["port_day_ils"]
     usd_ils   = summary["usd_ils"]
     rows      = summary["rows"]
+    failed    = summary.get("failed", [])
+    short_ma  = summary.get("short_ma", [])
+
+    # Anything that makes the headline numbers less trustworthy goes in the email.
+    warnings = []
+    if failed:
+        warnings.append(
+            f"<b>{len(failed)} מתוך {summary.get('expected', '?')} מניות לא נמשכו "
+            f"({', '.join(failed)})</b> — שווי התיק והשינוי היומי מחושבים על תיק חלקי."
+        )
+    if short_ma:
+        warnings.append(
+            f"היסטוריה קצרה מ-150 ימי מסחר ב-{', '.join(short_ma)} — "
+            f"סיגנל ה-MA150 שלהן מחושב על חלון קצר יותר."
+        )
 
     # Need indices for WhatsApp — re-fetch quickly
     from generate_report import fetch_index
-    import time
     indices = [fetch_index("^GSPC", "S&P 500"), fetch_index("^TA125.TA", "TA-125")]
     time.sleep(0.2)
 
-    # 2. Build subject
+    # 2. Publish so the emailed link actually resolves
+    published = False
+    if args.no_publish:
+        print("\n⏭️  מדלג על פרסום (--no-publish)")
+    else:
+        print("\n🚀 מפרסם ל-GitHub Pages...")
+        published = publish_report(html_path)
+
+    # 3. Build subject
     arrow   = "▲" if day_pct >= 0 else "▼"
     sign    = "+" if day_pct >= 0 else ""
     today   = date.today().strftime("%d/%m/%Y")
-    subject = f"📊 דוח תיק {today} | ₪{total_val:,.0f} | {arrow}{sign}{day_pct:.1f}%"
+    prefix  = "⚠️ " if failed else "📊 "
+    subject = f"{prefix}דוח תיק {today} | ₪{total_val:,.0f} | {arrow}{sign}{day_pct:.1f}%"
+    if failed:
+        subject += f" | חסרות {len(failed)} מניות"
 
-    # 3. Send email
-    print("\n📧 שולח מייל...")
-    send_email(html_path, subject, total_val, day_pct)
+    # 4. Send email
+    email_ok = True
+    if args.no_email:
+        print("\n⏭️  מדלג על מייל (--no-email)")
+    else:
+        print("\n📧 שולח מייל...")
+        email_ok = send_email(html_path, subject, total_val, day_pct,
+                              published=published, warnings=warnings)
 
-    # 4. Send WhatsApp
-    print("\n📱 שולח WhatsApp...")
-    wa_msg = build_whatsapp_message(rows, indices, total_val, day_pct, day_ils, usd_ils)
-    send_whatsapp(wa_msg)
+    # 5. Send WhatsApp
+    if args.no_whatsapp:
+        print("\n⏭️  מדלג על WhatsApp (--no-whatsapp)")
+    else:
+        print("\n📱 שולח WhatsApp...")
+        wa_msg = build_whatsapp_message(rows, indices, total_val, day_pct, day_ils, usd_ils)
+        send_whatsapp(wa_msg)
 
     print(f"\n{'='*50}")
     print(f"✅ סיים | תיק: ₪{total_val:,.0f} | {sign}{day_pct:.1f}%")
+    if failed:
+        print(f"⚠️  תיק חלקי — חסרות: {', '.join(failed)}")
     print(f"{'='*50}\n")
+
+    # Exit non-zero so a silent failure can't look like success.
+    if failed or not email_ok:
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

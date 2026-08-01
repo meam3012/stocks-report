@@ -24,15 +24,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate & send report
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # send_report.py now publishes (and verifies the Pages URL is live) before
+      # emailing, so the link in the email can never point at a 404.
+      # WhatsApp is skipped here — the bridge only runs on Meir's Mac.
+      - name: Generate, publish & send report
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-        run: python send_report.py
-
-      - name: Commit updated data.json and report
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json report_*.html
-          git diff --staged --quiet || git commit -m "data: daily update $(date +'%Y-%m-%d')"
-          git push
+        run: python send_report.py --no-whatsapp

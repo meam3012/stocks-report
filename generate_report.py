@@ -243,6 +243,7 @@ def fetch_stock(ticker, shares, currency, usd_ils):
             "month_pct":    month_pct,
             "year_pct":     year_pct,
             "ma150":        ma150,
+            "ma_days":      n,   # actual window used; < 150 means not a true MA150
             "pct_ma150":    pct_ma150,
             "rsi":          rsi,
             "price_ils":    price_ils,
@@ -879,6 +880,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
         "bearish_pct": bearish_pct,
         "usd_ils": usd_ils,
         "rows": rows,
+        "short_ma": [r["ticker"] for r in rows if r.get("ma_days", 150) < 150],
     }
 
 # ─── Performance History ──────────────────────────────────────────────────────
@@ -1071,6 +1073,7 @@ def main():
 
     # Fetch all stocks
     rows = []
+    failed = []
     for stock in PORTFOLIO:
         print(f"   ⏳ {stock['ticker']}...", end=" ", flush=True)
         data = fetch_stock(stock["ticker"], stock["shares"], stock["currency"], usd_ils)
@@ -1086,6 +1089,7 @@ def main():
             pma = data.get("pct_ma150")
             print(f"MA150: {pma:+.1f}%" if pma is not None else "ok", flush=True)
         else:
+            failed.append(stock["ticker"])
             print("ERROR", flush=True)
         time.sleep(0.25)
 
@@ -1110,6 +1114,8 @@ def main():
 
     # Generate HTML
     html, summary = generate_html(rows, indices, usd_ils, today, news_data)
+    summary["failed"]   = failed
+    summary["expected"] = len(PORTFOLIO)
 
     # Save HTML report
     out_path = Path(__file__).parent / f"report_{today.strftime('%Y-%m-%d')}.html"
@@ -1118,6 +1124,11 @@ def main():
     print(f"   💰 שווי תיק: ₪{summary['total_val']:,.0f}")
     print(f"   📈 שינוי יומי: {summary['port_day_pct']:+.2f}% (₪{summary['port_day_ils']:+,.0f})")
     print(f"   ⚠️  מתחת MA150: {summary['bearish_pct']:.1f}% מהתיק")
+    if failed:
+        print(f"   ❌ נכשלו {len(failed)}/{len(PORTFOLIO)} מניות: {', '.join(failed)} "
+              f"— השווי והשינוי היומי מחושבים על תיק חלקי!")
+    if summary["short_ma"]:
+        print(f"   ⚠️  היסטוריה חלקית (MA קצר מ-150): {', '.join(summary['short_ma'])}")
 
     # Generate data.json for Bloomberg Terminal viewer
     data_json_path = generate_data_json(rows, indices, usd_ils, today, news_data)
