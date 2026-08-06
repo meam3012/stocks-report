@@ -272,30 +272,6 @@ def translate_he(text):
     except Exception:
         return text
 
-def fetch_article_bullets(url):
-    """Fetch article og:description, translate to Hebrew, return as bullet list."""
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
-        html = r.text
-        # Try og:description then meta description
-        for pattern in [
-            r'property=["\']og:description["\'][^>]+content=["\']([^"\']{20,600})',
-            r'content=["\']([^"\']{20,600})["\'][^>]+property=["\']og:description["\']',
-            r'name=["\']description["\'][^>]+content=["\']([^"\']{20,600})',
-            r'content=["\']([^"\']{20,600})["\'][^>]+name=["\']description["\']',
-        ]:
-            m = re.search(pattern, html)
-            if m:
-                desc = m.group(1).strip()
-                translated = translate_he(desc)
-                # Split into bullet sentences
-                parts = re.split(r'(?<=[.!?])\s+', translated)
-                bullets = [p.strip() for p in parts if len(p.strip()) > 10]
-                return bullets[:3]
-        return []
-    except Exception:
-        return []
-
 # ─── News Fetching ───────────────────────────────────────────────────────────
 
 def fetch_news(ticker):
@@ -357,8 +333,10 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
     bearish_val   = sum(r["val_ils"] for r in rows if r["val_ils"] and r["pct_ma150"] is not None and r["pct_ma150"] < 0)
     bearish_pct   = bearish_val / total_val * 100 if total_val else 0
 
-    sp500  = next((i for i in indices if "S&P" in i["name"]), None)
-    ta125  = next((i for i in indices if "TA-125" in i["name"]),  None)
+    sp500  = next((i for i in indices if "S&P"    in i["name"]), None)
+    ndx    = next((i for i in indices if "NDX"    in i["name"]), None)
+    ta35   = next((i for i in indices if i["name"] == "TA-35"),  None)
+    ta125  = next((i for i in indices if "TA-125" in i["name"]), None)
 
     today_str = report_date.strftime("%-d ב%B %Y").replace(
         "January","ינואר").replace("February","פברואר").replace("March","מרץ"
@@ -367,12 +345,26 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
         ).replace("October","אוקטובר").replace("November","נובמבר").replace("December","דצמבר")
 
     def idx_row(idx, label):
+        """One market-table row: value + day/week/month/YTD, all real numbers.
+
+        A missing value renders as — rather than 0%, which would read as a flat market.
+        """
         if not idx or idx["value"] is None:
-            return f"<td>{label}</td><td>—</td><td>—</td>"
-        cls = "up" if idx["day_pct"] >= 0 else "dn"
+            return (f'<td class="bold">{label}</td>'
+                    f'<td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>')
+
+        def cell(v, small=False):
+            if v is None:
+                return '<td style="color:var(--muted);">—</td>'
+            style = ' style="font-size:12px;"' if small else ""
+            return f'<td class="{"up" if v >= 0 else "dn"}"{style}>{fmt_pct(v)}</td>'
+
         return (f'<td class="bold">{label}</td>'
                 f'<td>{idx["value"]:,.0f}</td>'
-                f'<td class="{cls}">{fmt_pct(idx["day_pct"])}</td>')
+                + cell(idx["day_pct"])
+                + cell(idx.get("week_pct"), small=True)
+                + cell(idx.get("month_pct"), small=True)
+                + cell(idx.get("ytd_pct"), small=True))
 
     port_cls  = "up" if port_day_pct >= 0 else "dn"
 
@@ -650,19 +642,6 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
     .news-link:hover {{ color: var(--blue); text-decoration: underline; }}
     .news-meta {{ color: var(--muted); font-size: 11px; direction: ltr; unicode-bidi: embed; }}
     .no-news {{ color: var(--muted); font-size: 13px; font-style: italic; }}
-    .news-bullets {{
-      margin: 5px 0 0 0;
-      padding-right: 16px;
-      padding-left: 0;
-      list-style: disc;
-    }}
-    .news-bullets li {{
-      color: var(--muted);
-      font-size: 12px;
-      padding: 1px 0;
-      border-bottom: none;
-      line-height: 1.5;
-    }}
 
     /* Footer */
     .footer {{
@@ -707,24 +686,27 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
       <tr>
         <th>מדד</th>
         <th>ערך</th>
-        <th>שינוי יומי</th>
-        <th>הערה</th>
+        <th>יומי</th>
+        <th>שבוע</th>
+        <th>חודש</th>
+        <th>מתחילת השנה</th>
       </tr>
     </thead>
     <tbody>
-      <tr>{idx_row(sp500, "S&P 500")}<td style="color:var(--muted); font-size:12px;">+28% שנתי</td></tr>
-      <tr>{idx_row(ta125, "TA-125")}<td></td></tr>
+      <tr>{idx_row(sp500, "S&P 500")}</tr>
+      <tr>{idx_row(ndx,   "NDX")}</tr>
+      <tr>{idx_row(ta35,  "TA-35")}</tr>
+      <tr>{idx_row(ta125, "TA-125")}</tr>
       <tr class="port-row">
         <td>🗂️ תיק מאיר</td>
         <td>{fmt_ils(total_val)}</td>
         <td class="{port_cls}">{fmt_pct(port_day_pct)}</td>
-        <td style="color:var(--muted); font-size:12px;">{fmt_ils(port_day_ils)} ביום</td>
+        <td colspan="3" style="color:var(--muted); font-size:12px;">{fmt_ils(port_day_ils)} ביום</td>
       </tr>
       <tr>
         <td class="bold">USD/ILS</td>
         <td class="mono">{usd_ils:.4f}</td>
-        <td>—</td>
-        <td></td>
+        <td colspan="4" style="color:var(--muted); font-size:12px;">שער המרה לחישוב פוזיציות דולריות</td>
       </tr>
     </tbody>
   </table>
@@ -815,7 +797,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
         pct_val = r.get("val_ils", 0) / total_val * 100 if total_val else 0
         if sk == "bearish" and pct_val >= 5:
             alerts.append(("red",
-                f"🔴 {r['ticker']} ({r['name']}) — מתחת MA150 ב-{fmt_pct(r.get('pct_ma150'))} | "
+                f"🔴 {r['ticker']} ({r['name']}) — מתחת MA150 ב-{abs(r.get('pct_ma150') or 0):.1f}% | "
                 f"חשיפה: {pct_val:.1f}% מהתיק ({fmt_ils(r['val_ils'])})"))
         elif sk in ("bearish", "warning") and abs(r.get("day_pct", 0)) >= 5:
             alerts.append(("yellow",
@@ -976,7 +958,7 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
         if tech == "BUY":
             notes = f"מעל MA150 ב-{ma_pct:+.1f}%."
         elif tech == "SELL":
-            notes = f"מתחת MA150 ב-{ma_pct:.1f}%."
+            notes = f"מתחת MA150 ב-{abs(ma_pct):.1f}%."
         else:
             notes = f"MA150: {ma_pct:+.1f}%."
         if rsi and rsi > 70:
@@ -1027,7 +1009,7 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
         ma_pct = r.get("pct_ma150", 0) or 0
         if ma_pct < -10 and pct_val >= 5:
             alerts.append({"level": "high", "sym": sym,
-                          "msg": f"מתחת MA150 ב-{ma_pct:.1f}% | {pct_val:.1f}% מהתיק", "flag": "🔴"})
+                          "msg": f"מתחת MA150 ב-{abs(ma_pct):.1f}% | {pct_val:.1f}% מהתיק", "flag": "🔴"})
         elif rsi_val and rsi_val > 70:
             alerts.append({"level": "med", "sym": sym,
                           "msg": f"RSI={rsi_val:.0f} — אזור overbought", "flag": "🟡"})
@@ -1066,7 +1048,8 @@ def main():
     indices = [
         fetch_index("^GSPC",     "S&P 500"),
         fetch_index("^NDX",      "NDX"),
-        fetch_index("^TA35.TA",  "TA-35"),
+        fetch_index("TA35.TA",   "TA-35"),   # no caret — "^TA35.TA" returns null
+
         fetch_index("^TA125.TA", "TA-125"),
     ]
     time.sleep(0.3)

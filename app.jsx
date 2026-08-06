@@ -491,8 +491,8 @@ function AISummary() {
   return (
     <div className="panel">
       <div className="panel-h">
-        <span className="t">סיכום AI · DAILY BRIEF</span>
-        <span className="meta">GENERATED {new Date().toLocaleDateString("he-IL")}</span>
+        <span className="t">סיכום יומי · DAILY BRIEF</span>
+        <span className="meta">{D.asOf}</span>
       </div>
       <div className="ai-block">
         <div className="label">תקציר היום</div>
@@ -523,13 +523,7 @@ function AISummary() {
             </li>
           ))}
         </ul>
-        <div className="label" style={{ marginTop: 10 }}>פעולה מומלצת</div>
-        <ul>
-          <li>בחן stop-loss על MARA — מתחת ל-MA150 ומומנטום שלילי.</li>
-          <li>שקול מימוש חלקי ב-PLTR לפני דוחות (RSI 74).</li>
-          <li>המתן לסגירה שבועית מעל $215 ב-AMZN לאישור פריצה.</li>
-        </ul>
-        <div className="stamp">CLAUDE-HAIKU · MTM 16:30 · NOT INVESTMENT ADVICE</div>
+        <div className="stamp">מחושב מ-data.json · אינדיקטורים בלבד · NOT INVESTMENT ADVICE</div>
       </div>
     </div>
   );
@@ -557,7 +551,7 @@ function Statusbar() {
       <span>F1 · ניתוח · F2 · התראות · F3 · יומן · / · חיפוש · ESC · ניקוי</span>
       <span><span className="key">P</span> הדפסה</span>
       <span>SESSION · NORMAL</span>
-      <span className="amber">TERMINAL v2.6 · 03/05/2026</span>
+      <span className="amber">TERMINAL v2.6 · {D.asOf}</span>
     </div>
   );
 }

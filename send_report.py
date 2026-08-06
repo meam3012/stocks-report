@@ -230,11 +230,15 @@ def build_whatsapp_message(rows: list, indices: list, total_val: float,
     arrow = "📈" if day_pct >= 0 else "📉"
     sign  = "+" if day_pct >= 0 else ""
 
-    # Group by signal
-    bullish = [r for r in rows if r.get("pct_ma150", 0) >= 10]
-    neutral = [r for r in rows if 0 <= r.get("pct_ma150", 0) < 10]
-    watch   = [r for r in rows if -10 <= r.get("pct_ma150", 0) < 0]
-    bearish = [r for r in rows if r.get("pct_ma150", 0) < -10]
+    # Group by signal. pct_ma150 can legitimately be None (signal() handles that
+    # case explicitly) — comparing None to an int raises, so coerce like the HTML does.
+    def ma_of(r):
+        return r.get("pct_ma150") or 0
+
+    bullish = [r for r in rows if ma_of(r) >= 10]
+    neutral = [r for r in rows if 0 <= ma_of(r) < 10]
+    watch   = [r for r in rows if -10 <= ma_of(r) < 0]
+    bearish = [r for r in rows if ma_of(r) < -10]
 
     def row_line(r):
         t = r["ticker"].replace(".TA", "")
@@ -242,7 +246,7 @@ def build_whatsapp_message(rows: list, indices: list, total_val: float,
             p = f"${r['last_close']:.2f}"
         else:
             p = f"₪{r['last_close']/100:.2f}"
-        ma = r.get("pct_ma150", 0)
+        ma = ma_of(r)
         sign_ma = "+" if ma >= 0 else ""
         return f"  {t:<6} {p:<8} {sign_ma}{ma:.1f}%"
 
@@ -255,15 +259,17 @@ def build_whatsapp_message(rows: list, indices: list, total_val: float,
     # Alerts
     alerts = []
     for r in bearish:
-        pct_port = r.get("val_ils", 0) / total_val * 100
+        pct_port = (r.get("val_ils") or 0) / total_val * 100 if total_val else 0
         if pct_port >= 5:
             t = r["ticker"].replace(".TA", "")
-            alerts.append(f"🔴 {t} — מתחת MA150 ב-{r['pct_ma150']:.1f}% ({pct_port:.1f}% מהתיק)")
+            # "מתחת" already carries the direction — abs() avoids rendering "ב--15.0%".
+            alerts.append(f"🔴 {t} — מתחת MA150 ב-{abs(ma_of(r)):.1f}% ({pct_port:.1f}% מהתיק)")
     for r in rows:
-        if abs(r.get("day_pct", 0)) >= 7:
+        day = r.get("day_pct") or 0
+        if abs(day) >= 7:
             t = r["ticker"].replace(".TA", "")
-            sign_d = "+" if r["day_pct"] >= 0 else ""
-            alerts.append(f"🟠 {t} — שינוי חד {sign_d}{r['day_pct']:.1f}% ביום")
+            sign_d = "+" if day >= 0 else ""
+            alerts.append(f"🟠 {t} — שינוי חד {sign_d}{day:.1f}% ביום")
 
     alerts_str = "\n".join(alerts) if alerts else "✅ אין התראות מיוחדות"
 
