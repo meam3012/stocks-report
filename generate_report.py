@@ -50,11 +50,40 @@ def calc_rsi(closes, period=14):
         return 100
     return round(100 - 100 / (1 + avg_gain / avg_loss), 1)
 
+_YF_SESSION = None
+
+def _yahoo_session():
+    """Session carrying the cookie + crumb that quoteSummary now requires.
+
+    Yahoo started rejecting unauthenticated quoteSummary calls with
+    401 "Invalid Crumb", which fetch_pe swallowed — every P/E silently became
+    None. Built once and reused; returns (session, crumb) or (None, None).
+    """
+    global _YF_SESSION
+    if _YF_SESSION is None:
+        try:
+            s = requests.Session()
+            s.headers.update(HEADERS)
+            try:
+                s.get("https://fc.yahoo.com", timeout=10)   # sets the cookie
+            except requests.RequestException:
+                pass                                        # cookie may already be set
+            crumb = s.get("https://query1.finance.yahoo.com/v1/test/getcrumb",
+                          timeout=10).text.strip()
+            _YF_SESSION = (s, crumb) if crumb and "<" not in crumb else (None, None)
+        except Exception:
+            _YF_SESSION = (None, None)
+    return _YF_SESSION
+
 def fetch_pe(ticker):
     """Fetch trailing P/E from Yahoo Finance quoteSummary. Returns None on failure."""
+    session, crumb = _yahoo_session()
+    if not session:
+        return None
     try:
-        url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}?modules=summaryDetail"
-        r = requests.get(url, headers=HEADERS, timeout=10)
+        url = (f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+               f"?modules=summaryDetail&crumb={crumb}")
+        r = session.get(url, timeout=10)
         res = r.json().get("quoteSummary", {}).get("result", [{}])
         pe = res[0].get("summaryDetail", {}).get("trailingPE", {}).get("raw") if res else None
         return round(pe, 1) if pe else None
@@ -72,9 +101,14 @@ def tech_signal(price, ma150, rsi):
     return "BUY"
 
 def fund_signal(pe):
-    """Fundamental signal based on P/E."""
+    """Fundamental signal based on P/E.
+
+    Returns "N/A" — not "HOLD" — when there is no P/E. ETFs and unprofitable
+    companies legitimately have none, and reporting "HOLD" there manufactures a
+    fundamental opinion out of missing data.
+    """
     if pe is None:
-        return "HOLD"
+        return "N/A"
     if pe < 20:
         return "BUY"
     if pe <= 35:
@@ -85,6 +119,8 @@ def verdict_signal(tech, fund):
     """Combined verdict from tech + fund signals."""
     if tech == "SELL":
         return "SELL"
+    if fund == "N/A":
+        return tech          # technical-only; caller labels it as such
     if tech == "BUY" and fund in ("BUY", "HOLD"):
         return "BUY"
     if tech == "BUY" and fund == "SELL":
@@ -324,7 +360,40 @@ def fmt_pct(val, plus=True):
     sign = "+" if val >= 0 else ""
     return f"{sign}{val:.1f}%"
 
-def generate_html(rows, indices, usd_ils, report_date, news_data=None):
+def display_units(r):
+    """Prices in the units a human reads them in.
+
+    Yahoo returns TASE prices in agorot while PORTFOLIO stores `avg` in shekels,
+    so the two are only comparable after dividing by 100. Getting this wrong
+    silently inflates every Israeli position 100x, so it lives in one place.
+    """
+    div = 100 if r["currency"] == "ILS" else 1
+    scale = lambda v: v / div if v is not None else None
+    return {
+        "price":      scale(r.get("last_close")),
+        "avg":        r.get("avg"),          # already in display units
+        "ma150":      scale(r.get("ma150")),
+        "support":    scale(r.get("support")),
+        "resistance": scale(r.get("resistance")),
+        "symbol":     "₪" if r["currency"] == "ILS" else "$",
+    }
+
+def position_pnl(r):
+    """Unrealized P&L for one holding, in ILS and in percent.
+
+    Returns (pnl_ils, pnl_pct, cost_ils) — or (None, None, None) when there is
+    no usable cost basis, so callers render — instead of a fabricated 0.
+    """
+    d = display_units(r)
+    avg, price = d["avg"], d["price"]
+    if not avg or price is None:
+        return None, None, None
+    # val_ils is already the ILS market value; derive cost with the same FX path.
+    fx = (r["val_ils"] / (price * r["shares"])) if price and r["shares"] else 1
+    cost_ils = avg * r["shares"] * fx
+    return r["val_ils"] - cost_ils, (price / avg - 1) * 100, cost_ils
+
+def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=None):
     total_val     = sum(r["val_ils"]      for r in rows if r["val_ils"]      is not None)
     total_prev    = sum(r["prev_val_ils"] for r in rows if r["prev_val_ils"] is not None)
     port_day_pct  = (total_val - total_prev) / total_prev * 100 if total_prev else 0
@@ -332,6 +401,43 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
 
     bearish_val   = sum(r["val_ils"] for r in rows if r["val_ils"] and r["pct_ma150"] is not None and r["pct_ma150"] < 0)
     bearish_pct   = bearish_val / total_val * 100 if total_val else 0
+
+    # Unrealized P&L. Positions without a usable cost basis are excluded from both
+    # sides of the ratio so the percentage stays honest rather than diluted.
+    _pnl = [(r, *position_pnl(r)) for r in rows]
+    total_cost    = sum(c for _, _, _, c in _pnl if c is not None)
+    total_pnl     = sum(p for _, p, _, c in _pnl if c is not None)
+    total_pnl_pct = (total_pnl / total_cost * 100) if total_cost else 0
+    pnl_cls       = "up" if total_pnl >= 0 else "dn"
+    pnl_arrow     = "▲" if total_pnl >= 0 else "▼"
+    no_basis      = [r["ticker"] for r, _, _, c in _pnl if c is None]
+
+    # Caveats belong in the report, not only in the covering email — whoever opens
+    # the Pages URL directly should see the same warnings.
+    short_ma = [r["ticker"] for r in rows if r.get("ma_days", 150) < 150]
+    caveats  = []
+    if failed:
+        caveats.append(f"<b>{len(failed)} מניות לא נמשכו ({', '.join(failed)})</b> — "
+                       f"שווי התיק, הרווח/הפסד והשינוי היומי מחושבים על תיק חלקי.")
+    if short_ma:
+        days = {r["ticker"]: r.get("ma_days") for r in rows if r["ticker"] in short_ma}
+        detail = ", ".join(f"{t} ({days[t]} ימים)" for t in short_ma)
+        caveats.append(f"היסטוריה קצרה מ-150 ימי מסחר: {detail} — "
+                       f"ה-MA שלהן מחושב על חלון קצר יותר ומסומן ב-* בטבלה.")
+    if no_basis:
+        caveats.append(f"אין מחיר קנייה ל-{', '.join(no_basis)} — "
+                       f"הן לא נכללות בחישוב הרווח/הפסד.")
+
+    trust_banner = ""
+    if caveats:
+        items = "".join(f"<li style='margin:3px 0;'>{c}</li>" for c in caveats)
+        trust_banner = f"""
+<div class="section" style="margin-bottom:20px; background:#3a2d00; border-color:#d29922;">
+  <div style="padding:12px 16px;">
+    <div style="font-weight:700; color:#e3b341; margin-bottom:6px;">⚠️ הסתייגויות נתונים</div>
+    <ul style="margin:0; padding-right:18px; color:#e3b341; font-size:13px; line-height:1.7;">{items}</ul>
+  </div>
+</div>"""
 
     sp500  = next((i for i in indices if "S&P"    in i["name"]), None)
     ndx    = next((i for i in indices if "NDX"    in i["name"]), None)
@@ -376,10 +482,22 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
         day_cls = "up" if (r.get("day_pct") or 0) >= 0 else "dn"
         ma_cls  = sig_key
 
-        if r["currency"] == "USD":
-            price_str = f"${r['last_close']:.2f}"
+        d = display_units(r)
+        price_str = f"{d['symbol']}{d['price']:.2f}"
+        avg_str   = f"{d['symbol']}{d['avg']:.2f}" if d["avg"] else "—"
+
+        pnl_ils, pnl_pct, _ = position_pnl(r)
+        if pnl_ils is None:
+            pnl_cell = '<td class="center mono" colspan="1">—</td>'
         else:
-            price_str = f"₪{r['last_close']/100:.2f}"
+            pc = "up" if pnl_ils >= 0 else "dn"
+            pnl_cell = (f'<td class="center mono {pc}">{fmt_ils(pnl_ils)}'
+                        f'<br><span style="font-size:11px;">{fmt_pct(pnl_pct)}</span></td>')
+
+        # NASA-style short history must not silently pass as a real MA150.
+        ma_txt = fmt_pct(r.get("pct_ma150"))
+        if r.get("ma_days", 150) < 150:
+            ma_txt += f'<span style="font-size:10px;color:var(--muted);">*</span>'
 
         table_rows_html += f"""
         <tr class="row-{sig_key}">
@@ -388,11 +506,47 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
           <td class="name-col">{r['name']}</td>
           <td class="center">{r['shares']:g}</td>
           <td class="center mono">{price_str}</td>
+          <td class="center mono" style="color:var(--muted);">{avg_str}</td>
           <td class="center {day_cls} mono">{fmt_pct(r.get('day_pct'))}</td>
-          <td class="center {ma_cls} bold mono">{fmt_pct(r.get('pct_ma150'))}</td>
+          <td class="center {ma_cls} bold mono">{ma_txt}</td>
           <td class="center mono bold">{fmt_ils(r['val_ils'])}</td>
+          {pnl_cell}
           <td class="center mono">{pct_val:.1f}%</td>
           <td class="center signal-cell">{sig_label}</td>
+        </tr>"""
+
+    # Indicators live in their own section: bolting five more columns onto the
+    # dashboard makes it unreadable in RTL on a phone, which is where it's read.
+    perf_rows_html = ""
+    for r in rows:
+        d = display_units(r)
+        rsi, pe = r.get("rsi"), r.get("pe")
+
+        if rsi is None:
+            rsi_cell = '<td class="center mono">—</td>'
+        else:
+            rsi_cls = "dn" if rsi > 70 else ("up" if rsi < 30 else "")
+            tag = " 🔥" if rsi > 70 else (" 🧊" if rsi < 30 else "")
+            rsi_cell = f'<td class="center mono {rsi_cls}">{rsi:.0f}{tag}</td>'
+
+        # Distance to the last-20-day extremes is actionable; the raw levels aren't.
+        def dist(level):
+            if not level or not d["price"]:
+                return "—"
+            return f"{(d['price'] / level - 1) * 100:+.1f}%"
+
+        perf_rows_html += f"""
+        <tr>
+          <td class="ticker">{r['ticker'].replace('.TA','')}</td>
+          <td class="center mono {'up' if (r.get('week_pct') or 0) >= 0 else 'dn'}">{fmt_pct(r.get('week_pct'))}</td>
+          <td class="center mono {'up' if (r.get('month_pct') or 0) >= 0 else 'dn'}">{fmt_pct(r.get('month_pct'))}</td>
+          <td class="center mono {'up' if (r.get('year_pct') or 0) >= 0 else 'dn'}">{fmt_pct(r.get('year_pct'))}</td>
+          {rsi_cell}
+          <td class="center mono">{f'{pe:.1f}' if pe else '—'}</td>
+          <td class="center mono">{d['symbol']}{d['ma150']:.2f}</td>
+          <td class="center mono" style="font-size:12px;">{dist(d['support'])}</td>
+          <td class="center mono" style="font-size:12px;">{dist(d['resistance'])}</td>
+          <td class="center mono" style="font-size:12px;">{fmt_vol(r.get('vol_raw'))} / {fmt_avg_vol(r.get('vol_raw'))}</td>
         </tr>"""
 
     # Build market rows
@@ -533,8 +687,16 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
       gap: 8px;
     }}
 
+    /* .section has overflow:hidden for its rounded corners, which silently CLIPS
+       any table wider than the viewport — on a phone most columns became
+       unreachable rather than scrollable. Tables get their own scroll context. */
+    .table-scroll {{
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }}
     table {{
       width: 100%;
+      min-width: 620px;
       border-collapse: collapse;
       font-size: 13px;
     }}
@@ -558,7 +720,10 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
     tr:hover td {{ background: #1c2333; }}
 
     .center {{ text-align: center; }}
-    .mono {{ font-family: 'SF Mono', 'Fira Code', monospace; }}
+    /* Numbers are LTR runs inside an RTL document; without isolation a leading
+       "-" or "₪" reorders and "₪-28,912" reads as "28,912-₪". */
+    .mono {{ font-family: 'SF Mono', 'Fira Code', monospace;
+             direction: ltr; unicode-bidi: isolate; }}
     .bold {{ font-weight: 700; }}
 
     .ticker {{
@@ -675,12 +840,20 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
     <div class="change {'up' if port_day_pct >= 0 else 'dn'}">
       {port_arrow} {fmt_pct(port_day_pct)} ({fmt_ils(abs(port_day_ils))}) ביום
     </div>
+    <div style="margin-top:8px; font-size:13px; color:#8b949e;">
+      מושקע: {fmt_ils(total_cost)} ·
+      <span class="{pnl_cls}" style="font-weight:700;">
+        רווח/הפסד: {pnl_arrow} {fmt_ils(abs(total_pnl))} ({fmt_pct(total_pnl_pct)})
+      </span>
+    </div>
   </div>
 </div>
 
+{trust_banner}
 <!-- ═══ MARKET CARDS ═══════════════════════════════════════════════════════ -->
 <div class="section" style="margin-bottom:20px;">
   <div class="section-header">🌍 מצב שווקים</div>
+  <div class="table-scroll">
   <table class="market-table">
     <thead>
       <tr>
@@ -710,11 +883,13 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
       </tr>
     </tbody>
   </table>
+  </div>
 </div>
 
 <!-- ═══ PORTFOLIO TABLE ════════════════════════════════════════════════════ -->
 <div class="section">
   <div class="section-header">📋 לוח בקרה — תיק מלא</div>
+  <div class="table-scroll">
   <table>
     <thead>
       <tr>
@@ -723,9 +898,11 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
         <th>שם</th>
         <th>כמות</th>
         <th>מחיר</th>
+        <th>מחיר קנייה</th>
         <th>יומי%</th>
         <th>MA150%</th>
         <th>שווי (₪)</th>
+        <th>רווח/הפסד</th>
         <th>% תיק</th>
         <th>סיגנל מיכו</th>
       </tr>
@@ -735,13 +912,45 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
     </tbody>
     <tfoot>
       <tr style="background:#1c2333; font-weight:700;">
-        <td colspan="7" style="text-align:left; padding-right:14px; color:var(--muted);">סה"כ</td>
+        <td colspan="8" style="text-align:left; padding-right:14px; color:var(--muted);">סה"כ</td>
         <td class="center mono bold">{fmt_ils(total_val)}</td>
+        <td class="center mono {pnl_cls}">{fmt_ils(total_pnl)}<br><span style="font-size:11px;">{fmt_pct(total_pnl_pct)}</span></td>
         <td class="center">100%</td>
         <td></td>
       </tr>
     </tfoot>
   </table>
+  </div>
+</div>
+
+<!-- ═══ PERFORMANCE & INDICATORS ═══════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">📈 ביצועים ואינדיקטורים</div>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>טיקר</th>
+        <th>שבוע</th>
+        <th>חודש</th>
+        <th>שנה</th>
+        <th>RSI</th>
+        <th>P/E</th>
+        <th>MA150</th>
+        <th>מתמיכה</th>
+        <th>מהתנגדות</th>
+        <th>נפח / ממוצע 20י'</th>
+      </tr>
+    </thead>
+    <tbody>
+      {perf_rows_html}
+    </tbody>
+  </table>
+  </div>
+  <div style="padding:8px 14px; color:var(--muted); font-size:11px; line-height:1.6;">
+    RSI: 🔥 מעל 70 (קניית יתר) · 🧊 מתחת 30 (מכירת יתר) ·
+    "מתמיכה"/"מהתנגדות" = מרחק המחיר מהשפל/שיא של 20 ימי המסחר האחרונים.
+  </div>
 </div>
 
 <!-- ═══ SIGNAL SUMMARY ════════════════════════════════════════════════════ -->
@@ -799,10 +1008,10 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
             alerts.append(("red",
                 f"🔴 {r['ticker']} ({r['name']}) — מתחת MA150 ב-{abs(r.get('pct_ma150') or 0):.1f}% | "
                 f"חשיפה: {pct_val:.1f}% מהתיק ({fmt_ils(r['val_ils'])})"))
-        elif sk in ("bearish", "warning") and abs(r.get("day_pct", 0)) >= 5:
+        elif sk in ("bearish", "warning") and abs(r.get("day_pct") or 0) >= 5:
             alerts.append(("yellow",
                 f"🟠 {r['ticker']} — שינוי חד: {fmt_pct(r.get('day_pct'))} ביום"))
-        elif sk == "bullish" and r.get("pct_ma150", 0) >= 20:
+        elif sk == "bullish" and (r.get("pct_ma150") or 0) >= 20:
             alerts.append(("green",
                 f"🟢 {r['ticker']} ({r['name']}) — {fmt_pct(r.get('pct_ma150'))} מעל MA150 | ביצוע חזק"))
 
@@ -845,11 +1054,20 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
     html += '  </div>\n</div>\n\n'
 
     html += f"""<!-- ═══ FOOTER ════════════════════════════════════════════════════════════ -->
+<div style="text-align:center; margin:24px 0;">
+  <a href="Portfolio%20Terminal.html"
+     style="display:inline-block; padding:12px 28px; border:1px solid #30363d; border-radius:9px;
+            color:#e6edf3; text-decoration:none; font-weight:700;">
+    🖥️ פתח טרמינל אינטראקטיבי
+  </a>
+</div>
+
 <div class="footer">
   נוצר: {report_date.strftime('%d/%m/%Y %H:%M')} |
   מקור: Yahoo Finance API (חינמי) |
   שיטת מיכו: מעל MA150 = בולישי | מתחת MA150 = סיגנל יציאה |
   USD/ILS: {usd_ils}
+  <br><span style="opacity:0.7;">אינדיקטורים בלבד — לא ייעוץ השקעות.</span>
 </div>
 
 </body>
@@ -862,7 +1080,11 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None):
         "bearish_pct": bearish_pct,
         "usd_ils": usd_ils,
         "rows": rows,
-        "short_ma": [r["ticker"] for r in rows if r.get("ma_days", 150) < 150],
+        "short_ma": short_ma,
+        "total_cost": total_cost,
+        "total_pnl": total_pnl,
+        "total_pnl_pct": total_pnl_pct,
+        "no_basis": no_basis,
     }
 
 # ─── Performance History ──────────────────────────────────────────────────────
@@ -1035,6 +1257,71 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
     print(f"✅ data.json נשמר: {out_path}")
     return str(out_path)
 
+# ─── Landing page ─────────────────────────────────────────────────────────────
+
+def generate_index(report_filename, summary, report_date):
+    """Write index.html — the site root, which was a 404.
+
+    Regenerated every run so it always points at the newest report, and links the
+    terminal, which has been updating daily with nothing pointing at it.
+    """
+    total_val = summary["total_val"]
+    day_pct   = summary["port_day_pct"]
+    pnl       = summary.get("total_pnl", 0)
+    pnl_pct   = summary.get("total_pnl_pct", 0)
+
+    day_col = "#3fb950" if day_pct >= 0 else "#f85149"
+    pnl_col = "#3fb950" if pnl     >= 0 else "#f85149"
+
+    html = f"""<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>דוח תיק — מאיר</title>
+<style>
+  body {{ margin:0; background:#0d1117; color:#e6edf3; direction:rtl;
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+         display:flex; align-items:center; justify-content:center; min-height:100vh; }}
+  .card {{ background:#161b22; border:1px solid #30363d; border-radius:14px;
+           padding:32px; max-width:460px; width:calc(100% - 32px); }}
+  h1 {{ margin:0 0 4px; font-size:22px; }}
+  .sub {{ color:#8b949e; font-size:13px; margin-bottom:22px; }}
+  .val {{ font-size:34px; font-weight:800; letter-spacing:-0.5px; }}
+  .line {{ font-size:15px; margin-top:6px; }}
+  .btn {{ display:block; text-align:center; padding:14px; border-radius:9px;
+          text-decoration:none; font-weight:700; margin-top:10px; }}
+  .primary {{ background:#1f6feb; color:#fff; }}
+  .ghost {{ border:1px solid #30363d; color:#e6edf3; }}
+  .foot {{ color:#6e7681; font-size:11px; margin-top:20px; text-align:center; }}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>📊 דוח תיק — מאיר</h1>
+    <div class="sub">שיטת מיכו · MA150 · {report_date.strftime('%d/%m/%Y')}</div>
+
+    <div class="val">₪{total_val:,.0f}</div>
+    <div class="line" style="color:{day_col};">
+      <span style="direction:ltr; display:inline-block;">{'▲' if day_pct >= 0 else '▼'} {day_pct:+.2f}%</span> ביום
+    </div>
+    <div class="line" style="color:{pnl_col};">רווח/הפסד כולל:
+      <span style="direction:ltr; display:inline-block;">{'▲' if pnl >= 0 else '▼'} ₪{abs(pnl):,.0f} ({pnl_pct:+.1f}%)</span>
+    </div>
+
+    <a class="btn primary" href="{report_filename}">📈 הדוח המלא של היום</a>
+    <a class="btn ghost" href="Portfolio%20Terminal.html">🖥️ טרמינל אינטראקטיבי</a>
+
+    <div class="foot">נוצר אוטומטית · Yahoo Finance · אינדיקטורים בלבד, לא ייעוץ השקעות</div>
+  </div>
+</body>
+</html>"""
+
+    out_path = Path(__file__).parent / "index.html"
+    out_path.write_text(html, encoding="utf-8")
+    print(f"✅ index.html נשמר: {out_path}")
+    return str(out_path)
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -1096,7 +1383,7 @@ def main():
         time.sleep(0.2)
 
     # Generate HTML
-    html, summary = generate_html(rows, indices, usd_ils, today, news_data)
+    html, summary = generate_html(rows, indices, usd_ils, today, news_data, failed=failed)
     summary["failed"]   = failed
     summary["expected"] = len(PORTFOLIO)
 
@@ -1106,12 +1393,17 @@ def main():
     print(f"\n✅ דוח נשמר: {out_path}")
     print(f"   💰 שווי תיק: ₪{summary['total_val']:,.0f}")
     print(f"   📈 שינוי יומי: {summary['port_day_pct']:+.2f}% (₪{summary['port_day_ils']:+,.0f})")
+    print(f"   💵 רווח/הפסד: ₪{summary['total_pnl']:+,.0f} ({summary['total_pnl_pct']:+.1f}%) "
+          f"על ₪{summary['total_cost']:,.0f} מושקע")
     print(f"   ⚠️  מתחת MA150: {summary['bearish_pct']:.1f}% מהתיק")
     if failed:
         print(f"   ❌ נכשלו {len(failed)}/{len(PORTFOLIO)} מניות: {', '.join(failed)} "
               f"— השווי והשינוי היומי מחושבים על תיק חלקי!")
     if summary["short_ma"]:
         print(f"   ⚠️  היסטוריה חלקית (MA קצר מ-150): {', '.join(summary['short_ma'])}")
+
+    # Landing page — the site root used to 404
+    generate_index(out_path.name, summary, today)
 
     # Generate data.json for Bloomberg Terminal viewer
     data_json_path = generate_data_json(rows, indices, usd_ils, today, news_data)

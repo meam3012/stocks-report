@@ -64,7 +64,7 @@ def publish_report(html_path: str) -> bool:
 
         if fresh is not None:
             data_path.write_bytes(fresh)
-        _git("add", "data.json", name)
+        _git("add", "data.json", "index.html", name)
         staged = _git("diff", "--staged", "--quiet", check=False)
         if staged.returncode != 0:          # non-zero == there are staged changes
             _git("commit", "-m", f"data: daily update {date.today():%Y-%m-%d}")
@@ -94,7 +94,8 @@ def publish_report(html_path: str) -> bool:
 # ─── Gmail sender ─────────────────────────────────────────────────────────────
 
 def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
-               published: bool = True, warnings: list | None = None):
+               published: bool = True, warnings: list | None = None,
+               pnl: float | None = None, pnl_pct: float | None = None):
     """Send a short link-email pointing to the GitHub Pages hosted report."""
     if not GMAIL_PASSWORD:
         print("❌ GMAIL_APP_PASSWORD לא מוגדר — לא ניתן לשלוח מייל")
@@ -123,6 +124,21 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
           </td>
         </tr>"""
 
+    # Total return sits under the day move — the day move alone says nothing
+    # about whether the position is actually in profit.
+    pnl_html = ""
+    if pnl is not None:
+        pcol = "#3fb950" if pnl >= 0 else "#f85149"
+        parr = "▲" if pnl >= 0 else "▼"
+        pnl_html = f"""
+            <p style="margin:18px 0 0;padding-top:14px;border-top:1px solid #d0d7de;
+                      text-align:center;font-size:14px;color:#57606a;">
+              רווח/הפסד כולל:
+              <span style="color:{pcol};font-weight:800;direction:ltr;display:inline-block;">
+                {parr} ₪{abs(pnl):,.0f} ({pnl_pct:+.1f}%)
+              </span>
+            </p>"""
+
     if published:
         cta_html = f"""
             <a href="{report_url}"
@@ -130,6 +146,13 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
                       text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
               📈 פתח דוח מלא
             </a>
+            <p style="margin:12px 0 0;">
+              <a href="{GITHUB_PAGES_BASE}/Portfolio%20Terminal.html"
+                 style="display:inline-block;border:1px solid #d0d7de;color:#24292f;font-size:14px;
+                        font-weight:600;text-decoration:none;padding:11px 28px;border-radius:8px;">
+                🖥️ טרמינל אינטראקטיבי
+              </a>
+            </p>
             <p style="margin:16px 0 0;font-size:11px;color:#8c959f;">
               או העתק: <a href="{report_url}" style="color:#1f6feb;">{report_url}</a>
             </p>"""
@@ -172,6 +195,7 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
                 </td>
               </tr>
             </table>
+{pnl_html}
           </td>
         </tr>
 
@@ -403,7 +427,9 @@ def main():
     else:
         print("\n📧 שולח מייל...")
         email_ok = send_email(html_path, subject, total_val, day_pct,
-                              published=published, warnings=warnings)
+                              published=published, warnings=warnings,
+                              pnl=summary.get("total_pnl"),
+                              pnl_pct=summary.get("total_pnl_pct"))
 
     # 5. Send WhatsApp
     if args.no_whatsapp:
