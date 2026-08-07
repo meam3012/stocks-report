@@ -64,6 +64,16 @@ HISTORY_MIN_FOR_REAL_CURVE = 30   # below this the perf curve falls back to a
 FX_FALLBACK = 3.05
 
 # ─── Delivery ─────────────────────────────────────────────────────────────────
+# Publish the report to GitHub Pages and email a link to it.
+#
+# IMPORTANT: a GitHub Pages site is public even when its repository is private
+# — access control for Pages exists only on Enterprise plans. So publishing
+# means the holdings, daily values and cost basis are readable by anyone with
+# the URL. Set this False to keep everything private: the report and the
+# standalone terminal are then attached to the email instead, and the repo is
+# still committed to daily so history.json keeps accumulating.
+PUBLISH_TO_PAGES = True
+
 GITHUB_PAGES_BASE = "https://meam3012.github.io/stocks-report"
 SEND_TO_EMAIL     = "meam3012@gmail.com"
 GMAIL_USER        = "meam3012@gmail.com"

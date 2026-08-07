@@ -1557,6 +1557,62 @@ def build_events(rows, history, today_record):
     return events, prev
 
 
+# ─── Standalone terminal ──────────────────────────────────────────────────────
+
+def generate_standalone_terminal(data_path):
+    """One self-contained HTML with the terminal and its data inlined.
+
+    The hosted terminal loads styles.css, two .jsx files and data.json over
+    HTTP. That works from a web server and nowhere else — so once the report
+    stops being published, the terminal has to travel as a single file that can
+    be opened straight from an email attachment.
+
+    React and Babel still come from a CDN, so it needs a connection; inlining
+    them would add ~2MB to every email for no benefit.
+    """
+    base = Path(__file__).parent
+    try:
+        shell = (base / "Portfolio Terminal.html").read_text(encoding="utf-8")
+        css   = (base / "styles.css").read_text(encoding="utf-8")
+        tweak = (base / "tweaks-panel.jsx").read_text(encoding="utf-8")
+        app   = (base / "app.jsx").read_text(encoding="utf-8")
+        data  = Path(data_path).read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"⚠️  לא ניתן לבנות טרמינל עצמאי: {e}")
+        return None
+
+    html = shell.replace(
+        '<link rel="stylesheet" href="styles.css" />',
+        f"<style>\n{css}\n</style>")
+
+    # Replace the synchronous XHR bootstrap with the data itself. That block also
+    # hid the loading overlay, which is fixed-position at z-index 200 — drop it
+    # without hiding the overlay and the terminal renders perfectly underneath a
+    # black screen.
+    start = html.find("<!-- Try to load data.json")
+    end   = html.find("</script>", html.find("<script>", start)) + len("</script>")
+    if start == -1 or end <= start:
+        print("⚠️  לא נמצא בלוק הטעינה בתבנית — הטרמינל העצמאי לא נבנה")
+        return None
+    boot = (f"<script>\n"
+            f"window.PORTFOLIO_DATA = {data};\n"
+            f"document.addEventListener('DOMContentLoaded', function () {{\n"
+            f"  var ld = document.getElementById('loading');\n"
+            f"  if (ld) ld.style.display = 'none';\n"
+            f"}});\n"
+            f"</script>")
+    html = html[:start] + boot + html[end:]
+
+    for src, code in (("tweaks-panel.jsx", tweak), ("app.jsx", app)):
+        html = html.replace(f'<script type="text/babel" src="{src}"></script>',
+                            f'<script type="text/babel">\n{code}\n</script>')
+
+    out = base / "terminal_standalone.html"
+    out.write_text(html, encoding="utf-8")
+    print(f"✅ טרמינל עצמאי: {out.name} ({len(html) // 1024}KB)")
+    return str(out)
+
+
 # ─── Landing page ─────────────────────────────────────────────────────────────
 
 def generate_index(report_filename, summary, report_date):
@@ -1728,7 +1784,9 @@ def main():
     data_json_path = generate_data_json(rows, indices, usd_ils, today, news_data,
                                         history=hist, events=events)
 
+    # Built after data.json so it can inline the fresh data.
     summary["data_json_path"] = data_json_path
+    summary["terminal_path"]  = generate_standalone_terminal(data_json_path)
     return str(out_path), summary
 
 if __name__ == "__main__":

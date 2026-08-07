@@ -23,7 +23,7 @@ from datetime import date, datetime
 # Addresses, endpoints and every tunable threshold live in config.py.
 sys.path.insert(0, str(Path(__file__).parent))
 from config import (GMAIL_USER, SEND_TO_EMAIL, WHATSAPP_URL, WHATSAPP_TO,
-                    GITHUB_PAGES_BASE)
+                    GITHUB_PAGES_BASE, PUBLISH_TO_PAGES)
 from generate_report import (main as generate_report, signal, display_units,
                              build_alerts)
 
@@ -129,7 +129,8 @@ def publish_report(html_path: str) -> bool:
 
 def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
                published: bool = True, warnings: list | None = None,
-               pnl: float | None = None, pnl_pct: float | None = None):
+               pnl: float | None = None, pnl_pct: float | None = None,
+               extra_attachments: list | None = None):
     """Send a short link-email pointing to the GitHub Pages hosted report."""
     if not GMAIL_PASSWORD:
         print("❌ GMAIL_APP_PASSWORD לא מוגדר — לא ניתן לשלוח מייל")
@@ -262,9 +263,13 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
     # If the hosted link isn't live, the report itself rides along.
     if not published:
         try:
-            part = MIMEApplication(Path(html_path).read_bytes(), _subtype="octet-stream")
-            part.add_header("Content-Disposition", "attachment", filename=report_filename)
-            msg.attach(part)
+            for path in [html_path, *(extra_attachments or [])]:
+                if not path or not Path(path).exists():
+                    continue
+                part = MIMEApplication(Path(path).read_bytes(), _subtype="octet-stream")
+                part.add_header("Content-Disposition", "attachment",
+                                filename=Path(path).name)
+                msg.attach(part)
         except Exception as e:
             print(f"⚠️  צירוף הדוח נכשל: {e}")
 
@@ -435,8 +440,9 @@ def main():
 
     # 2. Publish so the emailed link actually resolves
     published = False
-    if args.no_publish:
-        print("\n⏭️  מדלג על פרסום (--no-publish)")
+    if args.no_publish or not PUBLISH_TO_PAGES:
+        why = "--no-publish" if args.no_publish else "PUBLISH_TO_PAGES=False"
+        print(f"\n⏭️  מדלג על פרסום ({why}) — הדוח יצורף למייל")
     else:
         print("\n🚀 מפרסם ל-GitHub Pages...")
         published = publish_report(html_path)
@@ -459,7 +465,8 @@ def main():
         email_ok = send_email(html_path, subject, total_val, day_pct,
                               published=published, warnings=warnings,
                               pnl=summary.get("total_pnl"),
-                              pnl_pct=summary.get("total_pnl_pct"))
+                              pnl_pct=summary.get("total_pnl_pct"),
+                              extra_attachments=[summary.get("terminal_path")])
 
     # 5. Send WhatsApp
     if args.no_whatsapp:
