@@ -71,6 +71,9 @@ def load_portfolio(path=None):
             "shares":   int(qty) if abs(qty - round(qty)) < 1e-9 else qty,
             "currency": m.get("currency", "ILS" if tic.endswith(".TA") else "USD"),
             "avg":      round(b["cost"] / b["qty"], 4),
+            # "etf" or "stock" — an ETF having no ticker-specific news is normal,
+            # and no trailing P/E is expected rather than a gap.
+            "type":     m.get("type", "stock"),
         })
 
     portfolio.sort(key=lambda p: p["ticker"])

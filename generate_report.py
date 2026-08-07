@@ -312,26 +312,45 @@ def translate_he(text):
 # ─── News Fetching ───────────────────────────────────────────────────────────
 
 def fetch_news(ticker):
-    """Fetch recent news headlines (last 48h) from Yahoo Finance search."""
+    """Recent headlines that are genuinely about this ticker.
+
+    Yahoo's search endpoint returns a generic trending feed when it has no news
+    for a symbol — and returns the *same* feed regardless of what was asked.
+    Querying MLSR.TA yielded stories about Infineon, a UK stablecoin and a
+    Russian warehouse fire, which the report then machine-translated and printed
+    under "מליסרון" as if they were company news. That is worse than an empty
+    section.
+
+    relatedTickers is the discriminator: real coverage lists the symbol, the
+    filler feed lists something else or nothing. Israeli holdings will usually
+    return nothing here, which is the honest answer — Yahoo does not cover TASE.
+    """
     try:
-        search_q = ticker.replace('.TA', '')
+        # Query the full symbol: bare "MLSR" resolves to a Paris pizza chain and
+        # bare "ACCL" to a US company of the same abbreviation.
         url = (f"https://query1.finance.yahoo.com/v1/finance/search"
-               f"?q={search_q}&newsCount={NEWS_FETCH_COUNT}&quotesCount=0&enableFuzzyQuery=false")
+               f"?q={ticker}&newsCount={NEWS_FETCH_COUNT}&quotesCount=0&enableFuzzyQuery=false")
         r = requests.get(url, headers=HEADERS, timeout=10)
         if r.status_code != 200:
             return []
-        items = r.json().get("news", [])
+
+        base   = ticker.replace(".TA", "").upper()
+        wanted = {ticker.upper(), base}
         cutoff = datetime.datetime.now().timestamp() - NEWS_WINDOW_HOURS * 3600
+
         results = []
-        for item in items:
-            if item.get("providerPublishTime", 0) >= cutoff:
-                title_en = item.get("title", "")
-                results.append({
-                    "title":     translate_he(title_en),
-                    "link":      item.get("link", "#"),
-                    "publisher": item.get("publisher", ""),
-                    "ts":        item.get("providerPublishTime", 0),
-                })
+        for item in r.json().get("news", []):
+            if item.get("providerPublishTime", 0) < cutoff:
+                continue
+            related = {t.upper() for t in (item.get("relatedTickers") or [])}
+            if not related & wanted:
+                continue
+            results.append({
+                "title":     translate_he(item.get("title", "")),
+                "link":      item.get("link", "#"),
+                "publisher": item.get("publisher", ""),
+                "ts":        item.get("providerPublishTime", 0),
+            })
         return results[:NEWS_SHOW_COUNT]
     except Exception:
         return []
@@ -1120,6 +1139,36 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
                          f'</li>\n')
             html += '    </ul>\n'
 
+    # Holdings Yahoo has no real coverage for — in practice the Israeli ones.
+    # Naming them beats an unexplained gap, and a Globes search on the Hebrew
+    # name that is already in trades.json actually gets Meir somewhere.
+    without = [r for r in rows if not nd.get(r["ticker"])]
+    if without:
+        tase  = [r for r in without if r["ticker"].endswith(".TA")]
+        other = [r for r in without if not r["ticker"].endswith(".TA")]
+
+        parts = []
+        if tase:
+            links = " · ".join(
+                f'<a href="https://www.globes.co.il/news/searchresults.aspx'
+                f'?text={requests.utils.quote(r["name"])}" target="_blank" '
+                f'class="news-link">{r["ticker"].replace(".TA", "")}</a>'
+                for r in tase)
+            parts.append(f'ל-Yahoo אין כיסוי למניות ת"א — חיפוש בגלובס: {links}')
+        # An ETF tracks a basket, so it rarely has ticker-specific coverage —
+        # saying so stops the line reading as a fault every single day.
+        etfs   = [r for r in other if r.get("type") == "etf"]
+        stocks = [r for r in other if r.get("type") != "etf"]
+        if stocks:
+            parts.append(f'ללא כתבות ב-{NEWS_WINDOW_HOURS} השעות האחרונות: '
+                         + ", ".join(r["ticker"] for r in stocks))
+        if etfs:
+            parts.append("תעודות סל — עוקבות אחר סל חברות ואין להן חדשות ייעודיות: "
+                         + ", ".join(r["ticker"] for r in etfs))
+
+        html += ('    <div class="no-news" style="margin-top:10px; line-height:1.8;">'
+                 + "<br>".join(parts) + '</div>\n')
+
     html += '  </div>\n</div>\n\n'
 
     html += f"""<!-- ═══ FOOTER ════════════════════════════════════════════════════════════ -->
@@ -1605,6 +1654,7 @@ def main():
                 "shares":   stock["shares"],
                 "currency": stock["currency"],
                 "avg":      stock.get("avg", 0),
+                "type":     stock.get("type", "stock"),
             })
             rows.append(data)
             pma = data.get("pct_ma150")

@@ -15,7 +15,8 @@
     },
     "NASA": {
       "name": "TEMA Space Innovators ETF",
-      "currency": "USD"
+      "currency": "USD",
+      "type": "etf"
     },
     "BMNR": {
       "name": "Bitmine Immersion",
