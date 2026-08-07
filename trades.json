@@ -1,0 +1,172 @@
+{
+  "_comment": "רישום עסקאות. shares ו-avg נגזרים מכאן — אין לערוך אותם ידנית בקוד. רשומות 'יתרת פתיחה' מייצגות את המצב כפי שהוזן בתחילת המעקב, לא עסקאות בפועל.",
+  "meta": {
+    "AMZN": {
+      "name": "Amazon",
+      "currency": "USD"
+    },
+    "TSLA": {
+      "name": "Tesla",
+      "currency": "USD"
+    },
+    "JOBY": {
+      "name": "Joby Aviation",
+      "currency": "USD"
+    },
+    "NASA": {
+      "name": "TEMA Space Innovators ETF",
+      "currency": "USD"
+    },
+    "BMNR": {
+      "name": "Bitmine Immersion",
+      "currency": "USD"
+    },
+    "QCOM": {
+      "name": "Qualcomm",
+      "currency": "USD"
+    },
+    "META": {
+      "name": "Meta Platforms",
+      "currency": "USD"
+    },
+    "ORCL": {
+      "name": "Oracle",
+      "currency": "USD"
+    },
+    "MARA": {
+      "name": "MARA Holdings",
+      "currency": "USD"
+    },
+    "PLTR": {
+      "name": "Palantir",
+      "currency": "USD"
+    },
+    "ACCL.TA": {
+      "name": "אקסל סולושנס",
+      "currency": "ILS"
+    },
+    "MLSR.TA": {
+      "name": "מליסרון",
+      "currency": "ILS"
+    },
+    "BKR": {
+      "name": "Baker Hughes",
+      "currency": "USD"
+    }
+  },
+  "trades": [
+    {
+      "date": "2026-05-03",
+      "ticker": "ACCL.TA",
+      "side": "buy",
+      "qty": 14789.0,
+      "price": 4.2,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "AMZN",
+      "side": "buy",
+      "qty": 62.0,
+      "price": 178.4,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "BKR",
+      "side": "buy",
+      "qty": 127,
+      "price": 38.4,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "BMNR",
+      "side": "buy",
+      "qty": 234.0,
+      "price": 52.8,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "JOBY",
+      "side": "buy",
+      "qty": 840.0,
+      "price": 5.8,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "MARA",
+      "side": "buy",
+      "qty": 9.0,
+      "price": 22.4,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "META",
+      "side": "buy",
+      "qty": 1.0,
+      "price": 482.0,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "MLSR.TA",
+      "side": "buy",
+      "qty": 37.0,
+      "price": 248.0,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "ORCL",
+      "side": "buy",
+      "qty": 0.8,
+      "price": 138.4,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "PLTR",
+      "side": "buy",
+      "qty": 0.49,
+      "price": 24.8,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "QCOM",
+      "side": "buy",
+      "qty": 8.0,
+      "price": 168.2,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-03",
+      "ticker": "TSLA",
+      "side": "buy",
+      "qty": 14.0,
+      "price": 242.1,
+      "note": "יתרת פתיחה"
+    },
+    {
+      "date": "2026-05-28",
+      "ticker": "NASA",
+      "side": "buy",
+      "qty": 190.0,
+      "price": 41.57,
+      "note": "החלפת BKR"
+    },
+    {
+      "date": "2026-05-28",
+      "seq": 1,
+      "ticker": "BKR",
+      "side": "sell",
+      "qty": 127,
+      "price": 38.4,
+      "note": "נמכרה לטובת NASA"
+    }
+  ]
+}

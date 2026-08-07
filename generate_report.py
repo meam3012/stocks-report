@@ -23,23 +23,13 @@ from config import (
     HISTORY_KEEP, HISTORY_MIN_FOR_REAL_CURVE,
     FX_FALLBACK,
 )
+from portfolio import load_portfolio, recent_trades
 
 # ─── Portfolio Definition ────────────────────────────────────────────────────
 
-PORTFOLIO = [
-    {"ticker": "AMZN",    "name": "Amazon",           "shares": 62,    "currency": "USD", "avg": 178.40},
-    {"ticker": "TSLA",    "name": "Tesla",             "shares": 14,    "currency": "USD", "avg": 242.10},
-    {"ticker": "JOBY",    "name": "Joby Aviation",     "shares": 840,   "currency": "USD", "avg": 5.80},
-    {"ticker": "NASA",    "name": "TEMA Space Innovators ETF", "shares": 190, "currency": "USD", "avg": 41.57},
-    {"ticker": "BMNR",    "name": "Bitmine Immersion", "shares": 234,   "currency": "USD", "avg": 52.80},
-    {"ticker": "QCOM",    "name": "Qualcomm",          "shares": 8,     "currency": "USD", "avg": 168.20},
-    {"ticker": "META",    "name": "Meta Platforms",    "shares": 1,     "currency": "USD", "avg": 482.00},
-    {"ticker": "ORCL",    "name": "Oracle",            "shares": 0.8,   "currency": "USD", "avg": 138.40},
-    {"ticker": "MARA",    "name": "MARA Holdings",     "shares": 9,     "currency": "USD", "avg": 22.40},
-    {"ticker": "PLTR",    "name": "Palantir",          "shares": 0.49,  "currency": "USD", "avg": 24.80},
-    {"ticker": "ACCL.TA", "name": "אקסל סולושנס",     "shares": 14789, "currency": "ILS", "avg": 4.20},
-    {"ticker": "MLSR.TA", "name": "מליסרון",          "shares": 37,    "currency": "ILS", "avg": 248.00},
-]
+# Holdings are derived from trades.json — record a trade there, never edit share
+# counts or average cost by hand. See portfolio.py.
+PORTFOLIO = load_portfolio()
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
 
@@ -1355,7 +1345,9 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, hist
         "benchmarks": benchmarks,
         "positions": positions,
         "perfHistory": perf,
-        "trades": [],
+        # The terminal's TradeLog panel was permanently empty because this was a
+        # hardcoded []. Newest first, most recent handful.
+        "trades": recent_trades(),
         "alerts": alerts,
         "notes": "מעקב יומי — שיטת מיכו. MA150 = קו החלטה.",
     }
