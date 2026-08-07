@@ -282,7 +282,8 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
 
 def build_whatsapp_message(rows: list, indices: list, total_val: float,
                            day_pct: float, day_ils: float, usd_ils: float,
-                           alert_list: list | None = None) -> str:
+                           alert_list: list | None = None,
+                           pnl: float | None = None, pnl_pct: float | None = None) -> str:
     today = date.today()
     date_str = today.strftime("%d/%m/%Y")
 
@@ -320,12 +321,18 @@ def build_whatsapp_message(rows: list, indices: list, total_val: float,
               for a in (alert_list or [])]
     alerts_str = "\n".join(alerts) if alerts else "✅ אין התראות מיוחדות"
 
+    # Total return, same headline number the report and email lead with.
+    pnl_line = ""
+    if pnl is not None:
+        pnl_line = (f"\n{'🟢' if pnl >= 0 else '🔴'} רווח/הפסד כולל: "
+                    f"*{'+' if pnl >= 0 else '-'}₪{abs(pnl):,.0f}* ({pnl_pct:+.1f}%)")
+
     msg = f"""📊 *דוח תיק יומי — מאיר*
 📅 {date_str} | USD/ILS: {usd_ils:.2f}
 
 ━━━━━━━━━━━━━━━━━━
 💰 *שווי תיק: ₪{total_val:,.0f}*
-{arrow} שינוי יומי: *{sign}{day_pct:.1f}%* ({sign}{day_ils:,.0f}₪)
+{arrow} שינוי יומי: *{sign}{day_pct:.1f}%* ({sign}{day_ils:,.0f}₪){pnl_line}
 ━━━━━━━━━━━━━━━━━━
 
 🌍 *שווקים:*
@@ -460,7 +467,9 @@ def main():
     else:
         print("\n📱 שולח WhatsApp...")
         wa_msg = build_whatsapp_message(rows, indices, total_val, day_pct, day_ils,
-                                        usd_ils, alert_list=summary.get("alerts"))
+                                        usd_ils, alert_list=summary.get("alerts"),
+                                        pnl=summary.get("total_pnl"),
+                                        pnl_pct=summary.get("total_pnl_pct"))
         send_whatsapp(wa_msg)
 
     print(f"\n{'='*50}")
