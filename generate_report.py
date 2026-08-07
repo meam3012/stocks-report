@@ -393,7 +393,8 @@ def position_pnl(r):
     cost_ils = avg * r["shares"] * fx
     return r["val_ils"] - cost_ils, (price / avg - 1) * 100, cost_ils
 
-def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=None):
+def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=None,
+                  events=None):
     total_val     = sum(r["val_ils"]      for r in rows if r["val_ils"]      is not None)
     total_prev    = sum(r["prev_val_ils"] for r in rows if r["prev_val_ils"] is not None)
     port_day_pct  = (total_val - total_prev) / total_prev * 100 if total_prev else 0
@@ -427,6 +428,25 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
     if no_basis:
         caveats.append(f"אין מחיר קנייה ל-{', '.join(no_basis)} — "
                        f"הן לא נכללות בחישוב הרווח/הפסד.")
+
+    # "What changed" — the crossings are the actual Micho trigger, and a daily
+    # snapshot on its own can never report them.
+    events_html = ""
+    if events is not None:
+        colours = {"cross_down": "#f85149", "cross_up": "#3fb950", "qty": "#58a6ff",
+                   "streak": "#d29922", "aging": "#d29922", "new": "#58a6ff"}
+        if events:
+            items = "".join(
+                f'<li style="margin:5px 0; color:{colours.get(k, "#e6edf3")};">{t}</li>'
+                for k, t in events)
+            body = f'<ul style="margin:0; padding-right:18px; line-height:1.8;">{items}</ul>'
+        else:
+            body = '<div style="color:var(--muted); font-size:13px;">אין שינויים מהותיים מאז הדוח הקודם.</div>'
+        events_html = f"""
+<div class="section">
+  <div class="section-header">🔄 מה השתנה מאז הדוח הקודם</div>
+  <div style="padding:14px 16px;">{body}</div>
+</div>"""
 
     trust_banner = ""
     if caveats:
@@ -850,6 +870,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
 </div>
 
 {trust_banner}
+{events_html}
 <!-- ═══ MARKET CARDS ═══════════════════════════════════════════════════════ -->
 <div class="section" style="margin-bottom:20px;">
   <div class="section-header">🌍 מצב שווקים</div>
@@ -1089,24 +1110,36 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
 
 # ─── Performance History ──────────────────────────────────────────────────────
 
-def build_perf_history(rows, indices, usd_ils):
-    """Build 90-day normalized performance history (base=100)."""
-    n = 90
+def build_perf_history(rows, indices, usd_ils, history=None):
+    """Build 90-day normalized performance history (base=100).
 
-    # Portfolio daily values
+    The portfolio line prefers recorded NAV from history.json. The fallback
+    backcast reprices today's share counts at today's FX all the way back, and
+    drops any holding with under 90 days of closes — NASA silently left the
+    basket, which made the line jump. It is only used before enough history
+    accumulates, and the result is flagged so the viewer can label it.
+    """
+    n = 90
+    synthetic = True
     port_vals = []
-    for d in range(n):
-        day_val = 0
-        for r in rows:
-            closes_90d = r.get("closes_90d", [])
-            if len(closes_90d) < n:
-                continue
-            c = closes_90d[-(n - d)]
-            if r["currency"] == "ILS":
-                day_val += (c / 100) * r["shares"]
-            else:
-                day_val += c * r["shares"] * usd_ils
-        port_vals.append(day_val)
+
+    recorded = [h for h in (history or []) if h.get("total_val")]
+    if len(recorded) >= 30:
+        port_vals = [h["total_val"] for h in recorded[-n:]]
+        synthetic = False
+    else:
+        for d in range(n):
+            day_val = 0
+            for r in rows:
+                closes_90d = r.get("closes_90d", [])
+                if len(closes_90d) < n:
+                    continue
+                c = closes_90d[-(n - d)]
+                if r["currency"] == "ILS":
+                    day_val += (c / 100) * r["shares"]
+                else:
+                    day_val += c * r["shares"] * usd_ils
+            port_vals.append(day_val)
 
     def normalize(vals):
         if not vals or vals[0] == 0:
@@ -1114,25 +1147,25 @@ def build_perf_history(rows, indices, usd_ils):
         base = vals[0]
         return [round(v / base * 100, 2) for v in vals]
 
+    days = len(port_vals)
     perf = {
-        "dates": list(range(n)),
+        "dates": list(range(days)),
         "portfolio": normalize(port_vals),
+        "portfolioSynthetic": synthetic,
     }
 
     for idx in indices:
         closes_90d = idx.get("closes_90d", [])
         key_map = {"S&P 500": "snp", "NDX": "ndx", "TA-35": "ta35", "TA-125": "ta125"}
         key = key_map.get(idx["name"], idx["name"].lower().replace("-", "").replace(" ", ""))
-        if len(closes_90d) >= n:
-            perf[key] = normalize(closes_90d[-n:])
-        else:
-            perf[key] = [100.0] * n
+        # Align the benchmarks to however many portfolio points we actually have.
+        perf[key] = normalize(closes_90d[-days:]) if len(closes_90d) >= days else [100.0] * days
 
     return perf
 
 # ─── data.json Generation ─────────────────────────────────────────────────────
 
-def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
+def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, history=None):
     now = datetime.datetime.now()
     months_he = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"]
     as_of = f"{now.day} ב{months_he[now.month-1]} {now.year}, {now.strftime('%H:%M')} IDT"
@@ -1230,7 +1263,7 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
         positions.append(pos)
 
     # perfHistory — 90-day normalized portfolio
-    perf = build_perf_history(rows, indices, usd_ils)
+    perf = build_perf_history(rows, indices, usd_ils, history=history)
 
     # alerts
     alerts = []
@@ -1278,6 +1311,157 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"✅ data.json נשמר: {out_path}")
     return str(out_path)
+
+# ─── Day-over-day history ─────────────────────────────────────────────────────
+
+HISTORY_PATH = Path(__file__).parent / "history.json"
+HISTORY_KEEP = 250
+
+
+def load_history():
+    try:
+        return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def history_record(rows, usd_ils, report_date, total_val, day_pct):
+    """One compact snapshot per run.
+
+    qty is stored alongside price on purpose: without it a purchase looks
+    identical to a gain when the series is read back.
+    """
+    positions = {}
+    for r in rows:
+        d = display_units(r)
+        band, _, _ = signal(r.get("pct_ma150"))
+        positions[r["ticker"]] = {
+            "qty":       r["shares"],
+            "price":     round(d["price"], 4) if d["price"] is not None else None,
+            "pct_ma150": round(r["pct_ma150"], 2) if r.get("pct_ma150") is not None else None,
+            "band":      band,
+            "rsi":       r.get("rsi"),
+            "val_ils":   round(r["val_ils"], 2) if r.get("val_ils") is not None else None,
+        }
+    return {
+        "date":      report_date.strftime("%Y-%m-%d"),
+        "total_val": round(total_val, 2),
+        "day_pct":   round(day_pct, 2),
+        "fx":        usd_ils,
+        "positions": positions,
+    }
+
+
+def save_history(record):
+    """Append today's record, replacing any existing one for the same date."""
+    hist = [h for h in load_history() if h.get("date") != record["date"]]
+    hist.append(record)
+    hist.sort(key=lambda h: h["date"])
+    hist = hist[-HISTORY_KEEP:]
+    HISTORY_PATH.write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"✅ history.json נשמר: {len(hist)} ימים")
+    return hist
+
+
+def build_events(rows, history, today_record):
+    """What changed since the previous run — the part a daily snapshot can't say.
+
+    Returns a list of (kind, html) where kind drives the colour.
+    """
+    past = [h for h in history if h["date"] < today_record["date"]]
+    if not past:
+        return [], None
+    prev = past[-1]
+    events = []
+
+    name_of = {r["ticker"]: r["name"] for r in rows}
+    # The previous run is not necessarily yesterday — weekends, holidays and
+    # skipped runs all leave gaps, so name the date instead of saying "אתמול".
+    d = prev["date"].split("-")
+    since = f"{d[2]}/{d[1]}"
+    oldest = past[0]["date"]
+
+    for tic, now in today_record["positions"].items():
+        before = prev["positions"].get(tic)
+        if not before:
+            events.append(("new", f"🆕 <b>{tic}</b> — פוזיציה חדשה בדוח"))
+            continue
+
+        n_ma, p_ma = now.get("pct_ma150"), before.get("pct_ma150")
+        if n_ma is None or p_ma is None:
+            continue
+
+        # The Micho trigger: the moment price crosses its MA150.
+        if p_ma >= 0 > n_ma:
+            events.append(("cross_down",
+                f"🔴 <b>{tic}</b> ({name_of.get(tic,'')}) ירדה מתחת ל-MA150 — "
+                f"ב-{since} {p_ma:+.1f}%, היום {n_ma:+.1f}%"))
+        elif p_ma < 0 <= n_ma:
+            events.append(("cross_up",
+                f"🟢 <b>{tic}</b> ({name_of.get(tic,'')}) חצתה מעל ל-MA150 — "
+                f"ב-{since} {p_ma:+.1f}%, היום {n_ma:+.1f}%"))
+
+        # Quantity changes mean a trade happened; flag it so it isn't read as return.
+        if before.get("qty") != now.get("qty"):
+            events.append(("qty",
+                f"📦 <b>{tic}</b> — הכמות השתנתה: {before['qty']:g} → {now['qty']:g}"))
+
+    # Portfolio direction streak.
+    streak, direction = 0, None
+    for h in reversed(past + [today_record]):
+        dp = h.get("day_pct") or 0
+        d = "up" if dp > 0 else ("down" if dp < 0 else None)
+        if d is None:
+            break
+        if direction is None:
+            direction = d
+        if d != direction:
+            break
+        streak += 1
+    if streak >= 3:
+        word = "עולה" if direction == "up" else "יורד"
+        icon = "📈" if direction == "up" else "📉"
+        events.append(("streak", f"{icon} התיק {word} <b>{streak} ימי מסחר ברציפות</b>"))
+
+    # How long each position has been below its MA150. Listing every one of these
+    # every day is how an alert box becomes wallpaper, so heavy positions get a
+    # line each and the rest are collapsed into a single tail.
+    nav = today_record.get("total_val") or 0
+    aging = []
+    for tic, now in today_record["positions"].items():
+        if (now.get("pct_ma150") or 0) >= 0:
+            continue
+        days = 0
+        for h in reversed(past):
+            p = h["positions"].get(tic)
+            if not p or (p.get("pct_ma150") is None) or p["pct_ma150"] >= 0:
+                break
+            days += 1
+        if days < 5:
+            continue
+        capped = days + 1 >= len(past)     # streak runs past the start of history
+        weight = (now.get("val_ils") or 0) / nav * 100 if nav else 0
+        aging.append((tic, days + 1, capped, weight))
+
+    aging.sort(key=lambda a: -a[3])
+    for tic, days, capped, weight in aging[:3]:
+        if weight < 5:
+            break
+        events.append(("aging",
+            f"⏳ <b>{tic}</b> מתחת ל-MA150 כבר <b>{days}{'+' if capped else ''}</b> "
+            f"ימי מסחר ({weight:.0f}% מהתיק)"))
+    rest = [a for a in aging if a not in aging[:3] or a[3] < 5]
+    if rest:
+        names = ", ".join(f"{t} ({d}{'+' if c else ''})" for t, d, c, _ in rest)
+        events.append(("aging", f"⏳ מתחת ל-MA150 זמן ממושך גם: {names}"))
+
+    if any(a[2] for a in aging):
+        events.append(("aging",
+            f'<span style="font-size:12px; opacity:0.75;">'
+            f'"+" = הרצף נמשך אל מעבר לתחילת ההיסטוריה ({oldest})</span>'))
+
+    return events, prev
+
 
 # ─── Landing page ─────────────────────────────────────────────────────────────
 
@@ -1404,10 +1588,20 @@ def main():
             print(f"   📄 {stock['ticker']}: {len(items)} כתבות", flush=True)
         time.sleep(0.2)
 
+    # Day-over-day: compare against the previous run before recording this one.
+    # A first pass is needed for the totals the history record stores.
+    _, pre = generate_html(rows, indices, usd_ils, today, news_data, failed=failed)
+    history = load_history()
+    record  = history_record(rows, usd_ils, today,
+                             pre["total_val"], pre["port_day_pct"])
+    events, prev = build_events(rows, history, record)
+
     # Generate HTML
-    html, summary = generate_html(rows, indices, usd_ils, today, news_data, failed=failed)
+    html, summary = generate_html(rows, indices, usd_ils, today, news_data,
+                                  failed=failed, events=events)
     summary["failed"]   = failed
     summary["expected"] = len(PORTFOLIO)
+    summary["events"]   = events
 
     # Save HTML report
     out_path = Path(__file__).parent / f"report_{today.strftime('%Y-%m-%d')}.html"
@@ -1424,11 +1618,20 @@ def main():
     if summary["short_ma"]:
         print(f"   ⚠️  היסטוריה חלקית (MA קצר מ-150): {', '.join(summary['short_ma'])}")
 
+    # Record today only after the report is written, so a mid-run failure doesn't
+    # poison tomorrow's comparison with a half-built snapshot.
+    hist = save_history(record)
+    if events:
+        print(f"   🔄 {len(events)} שינויים מאז {prev['date'] if prev else '—'}:")
+        for _, text in events:
+            print("      • " + re.sub(r"<[^>]+>", "", text))
+
     # Landing page — the site root used to 404
     generate_index(out_path.name, summary, today)
 
     # Generate data.json for Bloomberg Terminal viewer
-    data_json_path = generate_data_json(rows, indices, usd_ils, today, news_data)
+    data_json_path = generate_data_json(rows, indices, usd_ils, today, news_data,
+                                        history=hist)
 
     summary["data_json_path"] = data_json_path
     return str(out_path), summary

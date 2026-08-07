@@ -143,8 +143,12 @@ function PerfChart() {
   return (
     <div className="panel">
       <div className="panel-h">
-        <span className="t">ביצועי תיק VS מדדים · 90D INDEXED</span>
-        <span className="meta">100 = T-90</span>
+        <span className="t">ביצועי תיק VS מדדים · {days}D INDEXED</span>
+        <span className="meta">
+          {D.perfHistory.portfolioSynthetic
+            ? "⚠ קו התיק מדומה — שוחזר מהחזקות היום"
+            : `100 = T-${days}`}
+        </span>
       </div>
       <div className="panel-b">
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", direction: "ltr" }}>
