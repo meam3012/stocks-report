@@ -1151,6 +1151,7 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
 
     # positions
     positions = []
+    nav = sum(r["val_ils"] for r in rows if r.get("val_ils") is not None)
     for r in rows:
         sym = r["ticker"].replace(".TA", "")
         market = "IL" if r["currency"] == "ILS" else "US"
@@ -1171,6 +1172,7 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
 
         rsi = r.get("rsi")
         pe = r.get("pe")
+        pnl_ils, pnl_pct, _ = position_pnl(r)
         tech = tech_signal(r["last_close"], r["ma150"], rsi)
         fund = fund_signal(pe)
         verd = verdict_signal(tech, fund)
@@ -1215,6 +1217,15 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
             "verdict": verd,
             "notes": notes,
             "events": news_titles,
+            # app.jsx reads these on every position; without them the terminal
+            # threw on load and rendered nothing.
+            "value":    round(price_disp * r["shares"], 2),   # in the position's own currency
+            "valueILS": round(r["val_ils"], 2) if r.get("val_ils") is not None else 0,
+            "weight":   round(r["val_ils"] / nav * 100, 2) if nav and r.get("val_ils") else 0,
+            "aboveMA":  (r.get("pct_ma150") or 0) >= 0,
+            "maDelta":  round(r.get("pct_ma150") or 0, 2),
+            "pl":       round(pnl_ils, 2) if pnl_ils is not None else 0,
+            "plPct":    round(pnl_pct, 2) if pnl_pct is not None else 0,
         }
         positions.append(pos)
 
@@ -1239,10 +1250,21 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None):
             alerts.append({"level": "med", "sym": sym,
                           "msg": f"RSI={rsi_val:.0f} — אזור oversold", "flag": "🔵"})
 
+    # The terminal reads D.totals in four places; its absence was a hard crash.
+    prev_nav = sum(r["prev_val_ils"] for r in rows if r.get("prev_val_ils") is not None)
+    pl_ils   = sum(p["pl"] for p in positions)
+    cost     = nav - pl_ils
+
     data = {
         "asOf": as_of,
         "fxRate": usd_ils,
         "cash": {"ils": 0, "usd": 0},
+        "totals": {
+            "valueILS":   round(nav, 2),
+            "dayPctILS":  round((nav - prev_nav) / prev_nav * 100, 2) if prev_nav else 0,
+            "plILS":      round(pl_ils, 2),
+            "plPct":      round(pl_ils / cost * 100, 2) if cost else 0,
+        },
         "benchmarks": benchmarks,
         "positions": positions,
         "perfHistory": perf,
