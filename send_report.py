@@ -41,6 +41,29 @@ def _git(*args, check=True):
                           capture_output=True, text=True, timeout=120, check=check)
 
 
+def _merge_history(pulled_path: Path, ours_blob: bytes) -> bytes:
+    """Union two history files by date, ours winning ties.
+
+    Falls back to ours if either side is unreadable — a corrupt remote copy must
+    not take today's record down with it.
+    """
+    try:
+        ours = {r["date"]: r for r in json.loads(ours_blob.decode("utf-8"))}
+    except Exception:
+        return ours_blob
+    try:
+        theirs = {r["date"]: r for r in json.loads(pulled_path.read_text(encoding="utf-8"))}
+    except Exception:
+        theirs = {}
+
+    merged = {**theirs, **ours}
+    out = [merged[d] for d in sorted(merged)][-250:]
+    if len(merged) > len(ours):
+        print(f"   🔗 היסטוריה מוזגה: {len(ours)} מקומי + {len(merged) - len(ours)} מרחוק "
+              f"= {len(out)} ימים")
+    return json.dumps(out, ensure_ascii=False, indent=1).encode("utf-8")
+
+
 def publish_report(html_path: str) -> bool:
     """Commit + push the report so its GitHub Pages URL actually resolves.
 
@@ -48,19 +71,34 @@ def publish_report(html_path: str) -> bool:
     Returns True only once the URL is confirmed live.
     """
     name = Path(html_path).name
-    data_path = REPO_DIR / "data.json"
+
+    # Files this run regenerates and the Action also commits. A plain rebase
+    # conflicts on them daily, so hold ours aside, sync, then put ours back.
+    #
+    # history.json MUST be in here. The Action checks out fresh each morning, so
+    # anything not committed is discarded — leaving it out would mean every run
+    # comparing against the same frozen day and the equity curve never growing.
+    generated = ["data.json", "history.json", "index.html"]
     try:
-        # data.json is regenerated every run and also committed by the Action, so a
-        # plain rebase conflicts daily. Hold ours aside, sync, then put ours back.
-        fresh = data_path.read_bytes() if data_path.exists() else None
-        _git("checkout", "--", "data.json", check=False)
+        held = {}
+        for f in generated:
+            p = REPO_DIR / f
+            if p.exists():
+                held[f] = p.read_bytes()
+            _git("checkout", "--", f, check=False)
 
         # Local clone drifts behind the GitHub Action's daily commits — rebase first.
         _git("pull", "--rebase", "--autostash", "origin", "main")
 
-        if fresh is not None:
-            data_path.write_bytes(fresh)
-        _git("add", "data.json", "index.html", name)
+        for f, blob in held.items():
+            if f == "history.json":
+                # Union by date rather than overwrite. data.json and index.html
+                # are whole-file snapshots where the newest simply wins, but a
+                # lost history day is invisible — the series just has a hole.
+                (REPO_DIR / f).write_bytes(_merge_history(REPO_DIR / f, blob))
+            else:
+                (REPO_DIR / f).write_bytes(blob)
+        _git("add", *generated, name)
         staged = _git("diff", "--staged", "--quiet", check=False)
         if staged.returncode != 0:          # non-zero == there are staged changes
             _git("commit", "-m", f"data: daily update {date.today():%Y-%m-%d}")

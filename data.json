@@ -1,15 +1,15 @@
 {
-  "asOf": "7 באוגוסט 2026, 11:44 IDT",
-  "fxRate": 3.0024,
+  "asOf": "7 באוגוסט 2026, 11:58 IDT",
+  "fxRate": 3.004,
   "cash": {
     "ils": 0,
     "usd": 0
   },
   "totals": {
-    "valueILS": 167154.47,
-    "dayPctILS": 1.27,
-    "plILS": -29418.79,
-    "plPct": -14.97
+    "valueILS": 167228.44,
+    "dayPctILS": 1.28,
+    "plILS": -29411.59,
+    "plPct": -14.96
   },
   "benchmarks": [
     {
@@ -30,19 +30,19 @@
     },
     {
       "sym": "TA-35",
-      "value": 4150.21,
-      "day": 0.53,
-      "week": 0.02,
-      "month": 1.54,
-      "ytd": 12.31
+      "value": 4157.3,
+      "day": 0.7,
+      "week": 0.19,
+      "month": 1.72,
+      "ytd": 12.5
     },
     {
       "sym": "TA-125",
-      "value": 4053.05,
-      "day": 0.51,
-      "week": -0.46,
-      "month": 0.01,
-      "ytd": 8.57
+      "value": 4062.02,
+      "day": 0.73,
+      "week": -0.24,
+      "month": 0.23,
+      "ytd": 8.81
     }
   ],
   "positions": [
@@ -73,14 +73,14 @@
         "מייקל בורי חולק \"שלושה תרשימים נהדרים\" שמראים כי קצב AI גדול יכול להירגע בצורה גרועה כמו הדיור ב-2008"
       ],
       "value": 16880.12,
-      "valueILS": 50680.87,
+      "valueILS": 50707.88,
       "weight": 30.32,
       "aboveMA": true,
       "maDelta": 14.42,
       "band": "bullish",
       "bandLabel": "BULLISH 🟢",
       "techOnly": false,
-      "pl": 17471.93,
+      "pl": 17481.24,
       "plPct": 52.61
     },
     {
@@ -96,7 +96,7 @@
       "year": 11.44,
       "ma150": 2.01,
       "rsi": 56.5,
-      "vol": "₪64K",
+      "vol": "₪69K",
       "avgVol": "₪299K",
       "pe": null,
       "support": 2.1,
@@ -108,7 +108,7 @@
       "events": [],
       "value": 34280.9,
       "valueILS": 34280.9,
-      "weight": 20.51,
+      "weight": 20.5,
       "aboveMA": true,
       "maDelta": 15.39,
       "band": "bullish",
@@ -144,14 +144,14 @@
         "מדוע מניית Joby Aviation עפה גבוה היום"
       ],
       "value": 6913.2,
-      "valueILS": 20756.19,
+      "valueILS": 20767.25,
       "weight": 12.42,
       "aboveMA": false,
       "maDelta": -17.67,
       "band": "bearish",
       "bandLabel": "BEARISH 🔴",
       "techOnly": true,
-      "pl": 6128.5,
+      "pl": 6131.76,
       "plPct": 41.9
     },
     {
@@ -160,14 +160,14 @@
       "market": "IL",
       "qty": 37,
       "avg": 248.0,
-      "price": 402.5,
-      "day": 0.62,
-      "week": 0.17,
-      "month": -6.18,
-      "year": 8.78,
+      "price": 402.8,
+      "day": 0.7,
+      "week": 0.25,
+      "month": -6.11,
+      "year": 8.86,
       "ma150": 428.73,
-      "rsi": 44.6,
-      "vol": "₪7K",
+      "rsi": 44.8,
+      "vol": "₪8K",
       "avgVol": "₪49K",
       "pe": 10.2,
       "support": 391.5,
@@ -175,21 +175,21 @@
       "tech": "SELL",
       "fund": "BUY",
       "verdict": "SELL",
-      "notes": "מתחת MA150 ב-6.1%.",
+      "notes": "מתחת MA150 ב-6.0%.",
       "events": [
-        "AMD תרכוש את Taalas עבור סיליקון AI מיוחד",
-        "DoubleVerify יירכש על ידי נילסן בעסקה של 2.15 מיליארד דולר; משתף את Pre-Bell"
+        "מחסן של ענקית קמעונאות רוסית נשרף לאחר מתקפת המל\"טים האחרונה של אוקראינה",
+        "מס הכנסה מוסיף תכונות תשלום והודעות חדשות לחשבון המס העסקי"
       ],
-      "value": 14892.5,
-      "valueILS": 14892.5,
+      "value": 14903.6,
+      "valueILS": 14903.6,
       "weight": 8.91,
       "aboveMA": false,
-      "maDelta": -6.12,
+      "maDelta": -6.05,
       "band": "warning",
       "bandLabel": "WATCH 🟠",
       "techOnly": false,
-      "pl": 5716.5,
-      "plPct": 62.3
+      "pl": 5727.6,
+      "plPct": 62.42
     },
     {
       "sym": "NASA",
@@ -215,14 +215,14 @@
       "notes": "מתחת MA150 ב-18.6%.",
       "events": [],
       "value": 4586.6,
-      "valueILS": 13770.81,
+      "valueILS": 13778.15,
       "weight": 8.24,
       "aboveMA": false,
       "maDelta": -18.6,
       "band": "bearish",
       "bandLabel": "BEARISH 🔴",
       "techOnly": true,
-      "pl": -9943.05,
+      "pl": -9948.35,
       "plPct": -41.93
     },
     {
@@ -252,14 +252,14 @@
         "SpaceX (SPCX) חושפת רשת AI Orbital ותוכניות מפעל של 16.8 מיליארד דולר"
       ],
       "value": 4473.42,
-      "valueILS": 13431.0,
+      "valueILS": 13438.15,
       "weight": 8.04,
       "aboveMA": false,
       "maDelta": -19.62,
       "band": "bearish",
       "bandLabel": "BEARISH 🔴",
       "techOnly": false,
-      "pl": 3254.66,
+      "pl": 3256.4,
       "plPct": 31.98
     },
     {
@@ -289,14 +289,14 @@
         "Cathie Wood's Ark Invest מייצרת את SpaceX, Circle Top Holdings לאחר מסע הרכישה האחרון"
       ],
       "value": 4282.2,
-      "valueILS": 12856.88,
+      "valueILS": 12863.73,
       "weight": 7.69,
       "aboveMA": false,
       "maDelta": -11.11,
       "band": "bearish",
       "bandLabel": "BEARISH 🔴",
       "techOnly": true,
-      "pl": -24238.38,
+      "pl": -24251.29,
       "plPct": -65.34
     },
     {
@@ -326,14 +326,14 @@
         "שווי הוגן של מניית קוואלקום (QCOM) יורד כאשר לחץ השוליים מקזז את שאיפות הבינה המלאכותית"
       ],
       "value": 1283.12,
-      "valueILS": 3852.44,
+      "valueILS": 3854.49,
       "weight": 2.3,
       "aboveMA": false,
       "maDelta": -4.24,
       "band": "warning",
       "bandLabel": "WATCH 🟠",
       "techOnly": false,
-      "pl": -187.59,
+      "pl": -187.69,
       "plPct": -4.64
     },
     {
@@ -363,14 +363,14 @@
         "פטפוט בשוק: מטא פלטפורמות חויבו לשלם 567 מיליון דולר על ידי שופט ניו מקסיקו"
       ],
       "value": 589.9,
-      "valueILS": 1771.12,
+      "valueILS": 1772.06,
       "weight": 1.06,
       "aboveMA": false,
       "maDelta": -5.5,
       "band": "warning",
       "bandLabel": "WATCH 🟠",
       "techOnly": false,
-      "pl": 323.96,
+      "pl": 324.13,
       "plPct": 22.39
     },
     {
@@ -400,7 +400,7 @@
         "המערב הפרוע החדש: טקסס ניסויים בקפיטליזם גולמי"
       ],
       "value": 114.78,
-      "valueILS": 344.6,
+      "valueILS": 344.79,
       "weight": 0.21,
       "aboveMA": false,
       "maDelta": -13.16,
@@ -437,14 +437,14 @@
         "דגשים לשיחות רווחים של MARA Holdings Inc (MARA) (רבעון 2 2026: הרחבה אסטרטגית וביטקוין ..."
       ],
       "value": 95.85,
-      "valueILS": 287.78,
+      "valueILS": 287.93,
       "weight": 0.17,
       "aboveMA": false,
       "maDelta": -2.99,
       "band": "warning",
       "bandLabel": "WATCH 🟠",
       "techOnly": true,
-      "pl": -317.5,
+      "pl": -317.67,
       "plPct": -52.46
     },
     {
@@ -474,14 +474,14 @@
         "קתי ווד מוכרת 17 מיליון דולר של מניות בינה מלאכותית פופולריות"
       ],
       "value": 76.4,
-      "valueILS": 229.39,
+      "valueILS": 229.51,
       "weight": 0.14,
       "aboveMA": true,
       "maDelta": 9.28,
       "band": "neutral",
       "bandLabel": "NEUTRAL 🟡",
       "techOnly": false,
-      "pl": 192.9,
+      "pl": 193.0,
       "plPct": 528.71
     }
   ],
@@ -620,7 +620,7 @@
       84.78,
       82.3,
       84.38,
-      90.62
+      90.66
     ],
     "portfolioSynthetic": false,
     "snp": [
@@ -825,7 +825,7 @@
       91.59,
       90.98,
       91.22,
-      91.7
+      91.86
     ],
     "ta125": [
       100.0,
@@ -893,7 +893,7 @@
       90.39,
       89.78,
       89.99,
-      90.45
+      90.65
     ]
   },
   "trades": [
@@ -988,25 +988,25 @@
     {
       "level": "high",
       "sym": "JOBY",
-      "msg": "מתחת MA150 ב-17.7% | חשיפה 12.4% מהתיק (₪20,756)",
+      "msg": "מתחת MA150 ב-17.7% | חשיפה 12.4% מהתיק (₪20,767)",
       "flag": "🔴"
     },
     {
       "level": "high",
       "sym": "NASA",
-      "msg": "מתחת MA150 ב-18.6% | חשיפה 8.2% מהתיק (₪13,771)",
+      "msg": "מתחת MA150 ב-18.6% | חשיפה 8.2% מהתיק (₪13,778)",
       "flag": "🔴"
     },
     {
       "level": "high",
       "sym": "TSLA",
-      "msg": "מתחת MA150 ב-19.6% | חשיפה 8.0% מהתיק (₪13,431)",
+      "msg": "מתחת MA150 ב-19.6% | חשיפה 8.0% מהתיק (₪13,438)",
       "flag": "🔴"
     },
     {
       "level": "high",
       "sym": "BMNR",
-      "msg": "מתחת MA150 ב-11.1% | חשיפה 7.7% מהתיק (₪12,857)",
+      "msg": "מתחת MA150 ב-11.1% | חשיפה 7.7% מהתיק (₪12,864)",
       "flag": "🔴"
     },
     {
