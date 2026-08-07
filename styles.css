@@ -254,6 +254,13 @@ table td.n, table td.num { display: table-cell; }
 .tag.BUY  { background: rgba(0, 255, 102, 0.15); color: var(--green); border: 1px solid var(--green-3); }
 .tag.SELL { background: rgba(255, 51, 68, 0.15); color: var(--red);   border: 1px solid var(--red-2); }
 .tag.HOLD { background: rgba(255, 176, 0, 0.12); color: var(--amber); border: 1px solid var(--amber-2); }
+.tag.N\/A { background: rgba(160, 160, 160, 0.12); color: var(--dim); border: 1px solid #3a3a3a; }
+
+/* Micho bands — the headline signal, matching the emailed report */
+.tag.band-bullish { background: rgba(0, 255, 102, 0.15); color: var(--green); border: 1px solid var(--green-3); }
+.tag.band-neutral { background: rgba(255, 176, 0, 0.12); color: var(--amber); border: 1px solid var(--amber-2); }
+.tag.band-warning { background: rgba(255, 140, 0, 0.15); color: #ff9d2e;      border: 1px solid #b36a00; }
+.tag.band-bearish { background: rgba(255, 51, 68, 0.15); color: var(--red);   border: 1px solid var(--red-2); }
 
 /* MA150 indicator */
 .ma-pill {

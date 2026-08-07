@@ -20,23 +20,19 @@ from email.mime.application import MIMEApplication
 from datetime import date, datetime
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-# Gmail: use an App Password (not your main password).
-# Generate at: https://myaccount.google.com/apppasswords
-GMAIL_USER     = "meam3012@gmail.com"
-GMAIL_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")   # set in env or fill here
-SEND_TO_EMAIL  = "meam3012@gmail.com"
-
-# WhatsApp bridge (whatsapp-web.js or similar running on localhost)
-WHATSAPP_URL   = "http://localhost:8080/api/send"
-WHATSAPP_TO    = "972506319165"   # Meir's number
-
-# ─── Import report generator ─────────────────────────────────────────────────
+# Addresses, endpoints and every tunable threshold live in config.py.
 sys.path.insert(0, str(Path(__file__).parent))
-from generate_report import main as generate_report
+from config import (GMAIL_USER, SEND_TO_EMAIL, WHATSAPP_URL, WHATSAPP_TO,
+                    GITHUB_PAGES_BASE)
+from generate_report import (main as generate_report, signal, display_units,
+                             build_alerts)
+
+# Gmail App Password — never hardcode it here.
+# Generate at: https://myaccount.google.com/apppasswords
+GMAIL_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 
 # ─── Publishing to GitHub Pages ──────────────────────────────────────────────
 
-GITHUB_PAGES_BASE = "https://meam3012.github.io/stocks-report"
 REPO_DIR = Path(__file__).parent
 
 
@@ -247,32 +243,32 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
 # ─── WhatsApp sender ──────────────────────────────────────────────────────────
 
 def build_whatsapp_message(rows: list, indices: list, total_val: float,
-                           day_pct: float, day_ils: float, usd_ils: float) -> str:
+                           day_pct: float, day_ils: float, usd_ils: float,
+                           alert_list: list | None = None) -> str:
     today = date.today()
     date_str = today.strftime("%d/%m/%Y")
 
     arrow = "📈" if day_pct >= 0 else "📉"
     sign  = "+" if day_pct >= 0 else ""
 
-    # Group by signal. pct_ma150 can legitimately be None (signal() handles that
-    # case explicitly) — comparing None to an int raises, so coerce like the HTML does.
+    # Bucket via the same signal() the report uses, instead of re-deriving the
+    # bands here — they drifted apart before.
     def ma_of(r):
         return r.get("pct_ma150") or 0
 
-    bullish = [r for r in rows if ma_of(r) >= 10]
-    neutral = [r for r in rows if 0 <= ma_of(r) < 10]
-    watch   = [r for r in rows if -10 <= ma_of(r) < 0]
-    bearish = [r for r in rows if ma_of(r) < -10]
+    buckets = {"bullish": [], "neutral": [], "warning": [], "bearish": []}
+    for r in rows:
+        band, _, _ = signal(r.get("pct_ma150"))
+        buckets.setdefault(band, []).append(r)
+    bullish, neutral, watch, bearish = (buckets["bullish"], buckets["neutral"],
+                                        buckets["warning"], buckets["bearish"])
 
     def row_line(r):
         t = r["ticker"].replace(".TA", "")
-        if r["currency"] == "USD":
-            p = f"${r['last_close']:.2f}"
-        else:
-            p = f"₪{r['last_close']/100:.2f}"
+        d = display_units(r)
         ma = ma_of(r)
         sign_ma = "+" if ma >= 0 else ""
-        return f"  {t:<6} {p:<8} {sign_ma}{ma:.1f}%"
+        return f"  {t:<6} {d['symbol']}{d['price']:<7.2f} {sign_ma}{ma:.1f}%"
 
     sp = next((i for i in indices if "S&P" in i["name"]), None)
     ta = next((i for i in indices if "TA"  in i["name"]), None)
@@ -280,21 +276,10 @@ def build_whatsapp_message(rows: list, indices: list, total_val: float,
     sp_str = f"{sp['value']:,.0f} ({'+' if sp['day_pct']>=0 else ''}{sp['day_pct']:.1f}%)" if sp and sp["value"] else "—"
     ta_str = f"{ta['value']:,.0f} ({'+' if ta['day_pct']>=0 else ''}{ta['day_pct']:.1f}%)" if ta and ta["value"] else "—"
 
-    # Alerts
-    alerts = []
-    for r in bearish:
-        pct_port = (r.get("val_ils") or 0) / total_val * 100 if total_val else 0
-        if pct_port >= 5:
-            t = r["ticker"].replace(".TA", "")
-            # "מתחת" already carries the direction — abs() avoids rendering "ב--15.0%".
-            alerts.append(f"🔴 {t} — מתחת MA150 ב-{abs(ma_of(r)):.1f}% ({pct_port:.1f}% מהתיק)")
-    for r in rows:
-        day = r.get("day_pct") or 0
-        if abs(day) >= 7:
-            t = r["ticker"].replace(".TA", "")
-            sign_d = "+" if day >= 0 else ""
-            alerts.append(f"🟠 {t} — שינוי חד {sign_d}{day:.1f}% ביום")
-
+    # Alerts come from the shared engine. This used to be a separate copy that
+    # fired sharp-move at 7% while the report used 5%, and never showed RSI.
+    alerts = [f"{a['flag']} {a['sym'] + ' — ' if a['sym'] else ''}{a['msg']}"
+              for a in (alert_list or [])]
     alerts_str = "\n".join(alerts) if alerts else "✅ אין התראות מיוחדות"
 
     msg = f"""📊 *דוח תיק יומי — מאיר*
@@ -436,7 +421,8 @@ def main():
         print("\n⏭️  מדלג על WhatsApp (--no-whatsapp)")
     else:
         print("\n📱 שולח WhatsApp...")
-        wa_msg = build_whatsapp_message(rows, indices, total_val, day_pct, day_ils, usd_ils)
+        wa_msg = build_whatsapp_message(rows, indices, total_val, day_pct, day_ils,
+                                        usd_ils, alert_list=summary.get("alerts"))
         send_whatsapp(wa_msg)
 
     print(f"\n{'='*50}")

@@ -1,15 +1,15 @@
 {
-  "asOf": "7 באוגוסט 2026, 11:22 IDT",
-  "fxRate": 3.0034,
+  "asOf": "7 באוגוסט 2026, 11:37 IDT",
+  "fxRate": 3.0041,
   "cash": {
     "ils": 0,
     "usd": 0
   },
   "totals": {
-    "valueILS": 167389.74,
-    "dayPctILS": 1.54,
-    "plILS": -29225.25,
-    "plPct": -14.86
+    "valueILS": 167228.66,
+    "dayPctILS": 1.28,
+    "plILS": -29415.55,
+    "plPct": -14.96
   },
   "benchmarks": [
     {
@@ -30,19 +30,19 @@
     },
     {
       "sym": "TA-35",
-      "value": 4143.53,
-      "day": 0.37,
-      "week": -0.14,
-      "month": 1.38,
-      "ytd": 12.13
+      "value": 4152.76,
+      "day": 0.59,
+      "week": 0.08,
+      "month": 1.6,
+      "ytd": 12.38
     },
     {
       "sym": "TA-125",
-      "value": 4047.7,
-      "day": 0.38,
-      "week": -0.59,
-      "month": -0.12,
-      "ytd": 8.43
+      "value": 4054.98,
+      "day": 0.56,
+      "week": -0.41,
+      "month": 0.06,
+      "ytd": 8.62
     }
   ],
   "positions": [
@@ -73,11 +73,14 @@
         "מייקל בורי חולק \"שלושה תרשימים נהדרים\" שמראים כי קצב AI גדול יכול להירגע בצורה גרועה כמו הדיור ב-2008"
       ],
       "value": 16880.12,
-      "valueILS": 50697.75,
-      "weight": 30.29,
+      "valueILS": 50709.57,
+      "weight": 30.32,
       "aboveMA": true,
       "maDelta": 14.42,
-      "pl": 17477.75,
+      "band": "bullish",
+      "bandLabel": "BULLISH 🟢",
+      "techOnly": false,
+      "pl": 17481.82,
       "plPct": 52.61
     },
     {
@@ -86,30 +89,33 @@
       "market": "IL",
       "qty": 14789,
       "avg": 4.2,
-      "price": 2.33,
-      "day": 3.79,
-      "week": 5.57,
-      "month": -4.04,
-      "year": 12.02,
+      "price": 2.319,
+      "day": 2.57,
+      "week": 5.17,
+      "month": -4.45,
+      "year": 11.49,
       "ma150": 2.01,
-      "rsi": 57.0,
-      "vol": "₪21K",
-      "avgVol": "₪276K",
+      "rsi": 56.6,
+      "vol": "₪40K",
+      "avgVol": "₪297K",
       "pe": null,
       "support": 2.1,
-      "resistance": 2.36,
+      "resistance": 2.32,
       "tech": "BUY",
       "fund": "N/A",
       "verdict": "BUY",
-      "notes": "מעל MA150 ב-+16.1%.",
+      "notes": "מעל MA150 ב-+15.4%.",
       "events": [],
-      "value": 34458.37,
-      "valueILS": 34458.37,
-      "weight": 20.59,
+      "value": 34295.69,
+      "valueILS": 34295.69,
+      "weight": 20.51,
       "aboveMA": true,
-      "maDelta": 16.13,
-      "pl": -27655.43,
-      "plPct": -44.52
+      "maDelta": 15.44,
+      "band": "bullish",
+      "bandLabel": "BULLISH 🟢",
+      "techOnly": true,
+      "pl": -27818.11,
+      "plPct": -44.79
     },
     {
       "sym": "JOBY",
@@ -138,11 +144,14 @@
         "מדוע מניית Joby Aviation עפה גבוה היום"
       ],
       "value": 6913.2,
-      "valueILS": 20763.1,
-      "weight": 12.4,
+      "valueILS": 20767.94,
+      "weight": 12.42,
       "aboveMA": false,
       "maDelta": -17.67,
-      "pl": 6130.54,
+      "band": "bearish",
+      "bandLabel": "BEARISH 🔴",
+      "techOnly": true,
+      "pl": 6131.97,
       "plPct": 41.9
     },
     {
@@ -151,33 +160,36 @@
       "market": "IL",
       "qty": 37,
       "avg": 248.0,
-      "price": 403.0,
-      "day": 0.75,
-      "week": 0.35,
-      "month": -7.38,
-      "year": 8.92,
-      "ma150": 428.82,
-      "rsi": 44.8,
-      "vol": "₪6K",
-      "avgVol": "₪42K",
+      "price": 402.3,
+      "day": 0.57,
+      "week": 0.12,
+      "month": -6.22,
+      "year": 8.73,
+      "ma150": 428.73,
+      "rsi": 44.5,
+      "vol": "₪7K",
+      "avgVol": "₪49K",
       "pe": 10.2,
       "support": 391.5,
       "resistance": 428.9,
       "tech": "SELL",
       "fund": "BUY",
       "verdict": "SELL",
-      "notes": "מתחת MA150 ב-6.0%.",
+      "notes": "מתחת MA150 ב-6.2%.",
       "events": [
-        "Haizea מספקת מונופילים עבור חוות הרוח 2.9GW Hornsea 3 של Ørsted",
-        "מניות, דולר בדולר לפני נתוני המשרות בארה\"ב; עליות נפט כשהמתח במפרץ מתלקח"
+        "BP מסכימה לרכוש את 70% ממניותיה של וודסייד בפרויקט הגז קליפסו",
+        "Thrupp & Maberly: בונה קואצ'רים בריטי היסטורי נכנס לעידן חדש של מכוניות מוטוריות בהזמנה אישית"
       ],
-      "value": 14911.0,
-      "valueILS": 14911.0,
-      "weight": 8.91,
+      "value": 14885.1,
+      "valueILS": 14885.1,
+      "weight": 8.9,
       "aboveMA": false,
-      "maDelta": -6.02,
-      "pl": 5735.0,
-      "plPct": 62.5
+      "maDelta": -6.16,
+      "band": "warning",
+      "bandLabel": "WATCH 🟠",
+      "techOnly": false,
+      "pl": 5709.1,
+      "plPct": 62.22
     },
     {
       "sym": "NASA",
@@ -203,11 +215,14 @@
       "notes": "מתחת MA150 ב-18.6%.",
       "events": [],
       "value": 4586.6,
-      "valueILS": 13775.39,
-      "weight": 8.23,
+      "valueILS": 13778.6,
+      "weight": 8.24,
       "aboveMA": false,
       "maDelta": -18.6,
-      "pl": -9946.36,
+      "band": "bearish",
+      "bandLabel": "BEARISH 🔴",
+      "techOnly": true,
+      "pl": -9948.68,
       "plPct": -41.93
     },
     {
@@ -237,11 +252,14 @@
         "SpaceX (SPCX) חושפת רשת AI Orbital ותוכניות מפעל של 16.8 מיליארד דולר"
       ],
       "value": 4473.42,
-      "valueILS": 13435.47,
-      "weight": 8.03,
+      "valueILS": 13438.6,
+      "weight": 8.04,
       "aboveMA": false,
       "maDelta": -19.62,
-      "pl": 3255.75,
+      "band": "bearish",
+      "bandLabel": "BEARISH 🔴",
+      "techOnly": false,
+      "pl": 3256.5,
       "plPct": 31.98
     },
     {
@@ -271,11 +289,14 @@
         "Cathie Wood's Ark Invest מייצרת את SpaceX, Circle Top Holdings לאחר מסע הרכישה האחרון"
       ],
       "value": 4282.2,
-      "valueILS": 12861.16,
-      "weight": 7.68,
+      "valueILS": 12864.16,
+      "weight": 7.69,
       "aboveMA": false,
       "maDelta": -11.11,
-      "pl": -24246.45,
+      "band": "bearish",
+      "bandLabel": "BEARISH 🔴",
+      "techOnly": true,
+      "pl": -24252.1,
       "plPct": -65.34
     },
     {
@@ -305,11 +326,14 @@
         "שווי הוגן של מניית קוואלקום (QCOM) יורד כאשר לחץ השוליים מקזז את שאיפות הבינה המלאכותית"
       ],
       "value": 1283.12,
-      "valueILS": 3853.72,
-      "weight": 2.3,
+      "valueILS": 3854.62,
+      "weight": 2.31,
       "aboveMA": false,
       "maDelta": -4.24,
-      "pl": -187.65,
+      "band": "warning",
+      "bandLabel": "WATCH 🟠",
+      "techOnly": false,
+      "pl": -187.7,
       "plPct": -4.64
     },
     {
@@ -335,15 +359,18 @@
       "verdict": "SELL",
       "notes": "מתחת MA150 ב-5.5%.",
       "events": [
-        "פטפוט בשוק: מטא פלטפורמות חויבו לשלם 567 מיליון דולר על ידי שופט ניו מקסיקו",
-        "מייקל בורי חולק \"שלושה תרשימים נהדרים\" שמראים כי קצב AI גדול יכול להירגע בצורה גרועה כמו הדיור ב-2008"
+        "השווי הנקי של מארק צוקרברג הונף על ידי מיליארדים דו-ספרתיים פעמיים הקיץ כאשר הוצאות הבינה המלאכותית של Meta מחלקות את וול סטריט. הנה מה מאותתים התנודתיות למשקיעים.",
+        "פטפוט בשוק: מטא פלטפורמות חויבו לשלם 567 מיליון דולר על ידי שופט ניו מקסיקו"
       ],
       "value": 589.9,
-      "valueILS": 1771.71,
+      "valueILS": 1772.12,
       "weight": 1.06,
       "aboveMA": false,
       "maDelta": -5.5,
-      "pl": 324.07,
+      "band": "warning",
+      "bandLabel": "WATCH 🟠",
+      "techOnly": false,
+      "pl": 324.14,
       "plPct": 22.39
     },
     {
@@ -373,10 +400,13 @@
         "המערב הפרוע החדש: טקסס ניסויים בקפיטליזם גולמי"
       ],
       "value": 114.78,
-      "valueILS": 344.72,
+      "valueILS": 344.8,
       "weight": 0.21,
       "aboveMA": false,
       "maDelta": -13.16,
+      "band": "bearish",
+      "bandLabel": "BEARISH 🔴",
+      "techOnly": false,
       "pl": 12.18,
       "plPct": 3.66
     },
@@ -407,11 +437,14 @@
         "דגשים לשיחות רווחים של MARA Holdings Inc (MARA) (רבעון 2 2026: הרחבה אסטרטגית וביטקוין ..."
       ],
       "value": 95.85,
-      "valueILS": 287.88,
+      "valueILS": 287.94,
       "weight": 0.17,
       "aboveMA": false,
       "maDelta": -2.99,
-      "pl": -317.61,
+      "band": "warning",
+      "bandLabel": "WATCH 🟠",
+      "techOnly": true,
+      "pl": -317.68,
       "plPct": -52.46
     },
     {
@@ -441,11 +474,14 @@
         "קתי ווד מוכרת 17 מיליון דולר של מניות בינה מלאכותית פופולריות"
       ],
       "value": 76.4,
-      "valueILS": 229.46,
+      "valueILS": 229.52,
       "weight": 0.14,
       "aboveMA": true,
       "maDelta": 9.28,
-      "pl": 192.96,
+      "band": "neutral",
+      "bandLabel": "NEUTRAL 🟡",
+      "techOnly": false,
+      "pl": 193.01,
       "plPct": 528.71
     }
   ],
@@ -584,7 +620,7 @@
       84.78,
       82.3,
       84.38,
-      90.75
+      90.66
     ],
     "portfolioSynthetic": false,
     "snp": [
@@ -789,7 +825,7 @@
       91.59,
       90.98,
       91.22,
-      91.56
+      91.76
     ],
     "ta125": [
       100.0,
@@ -857,34 +893,64 @@
       90.39,
       89.78,
       89.99,
-      90.33
+      90.49
     ]
   },
   "trades": [],
   "alerts": [
     {
       "level": "high",
+      "sym": "",
+      "msg": "MARA (MARA Holdings) ירדה מתחת ל-MA150 — ב-31/07 +8.2%, היום -3.0%",
+      "flag": "🔴"
+    },
+    {
+      "level": "high",
       "sym": "JOBY",
-      "msg": "מתחת MA150 ב-17.7% | 12.4% מהתיק",
+      "msg": "מתחת MA150 ב-17.7% | חשיפה 12.4% מהתיק (₪20,768)",
       "flag": "🔴"
     },
     {
       "level": "high",
       "sym": "NASA",
-      "msg": "מתחת MA150 ב-18.6% | 8.2% מהתיק",
+      "msg": "מתחת MA150 ב-18.6% | חשיפה 8.2% מהתיק (₪13,779)",
       "flag": "🔴"
     },
     {
       "level": "high",
       "sym": "TSLA",
-      "msg": "מתחת MA150 ב-19.6% | 8.0% מהתיק",
+      "msg": "מתחת MA150 ב-19.6% | חשיפה 8.0% מהתיק (₪13,439)",
       "flag": "🔴"
     },
     {
       "level": "high",
       "sym": "BMNR",
-      "msg": "מתחת MA150 ב-11.1% | 7.7% מהתיק",
+      "msg": "מתחת MA150 ב-11.1% | חשיפה 7.7% מהתיק (₪12,864)",
       "flag": "🔴"
+    },
+    {
+      "level": "med",
+      "sym": "QCOM",
+      "msg": "שינוי חד: +1.8% ביום",
+      "flag": "🟠"
+    },
+    {
+      "level": "med",
+      "sym": "MARA",
+      "msg": "שינוי חד: -5.2% ביום",
+      "flag": "🟠"
+    },
+    {
+      "level": "low",
+      "sym": "",
+      "msg": "AMZN (Amazon) חצתה מעל ל-MA150 — ב-31/07 -0.4%, היום +14.4%",
+      "flag": "🟢"
+    },
+    {
+      "level": "low",
+      "sym": "",
+      "msg": "PLTR (Palantir) חצתה מעל ל-MA150 — ב-31/07 -15.2%, היום +9.3%",
+      "flag": "🟢"
     }
   ],
   "notes": "מעקב יומי — שיטת מיכו. MA150 = קו החלטה."

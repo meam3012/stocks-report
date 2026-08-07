@@ -13,6 +13,17 @@ import sys
 import re
 from pathlib import Path
 
+from config import (
+    MA_WINDOW, BAND_BULLISH, BAND_NEUTRAL, BAND_WARNING,
+    ALERT_WEIGHT_PCT, ALERT_DAY_MOVE_PCT, ALERT_STRONG_BULL_PCT,
+    RSI_PERIOD, RSI_OVERBOUGHT, RSI_OVERSOLD,
+    PE_CHEAP, PE_FAIR,
+    NEWS_WINDOW_HOURS, NEWS_FETCH_COUNT, NEWS_SHOW_COUNT,
+    WEEK_DAYS, MONTH_DAYS, CHART_DAYS, EXTREME_DAYS,
+    HISTORY_KEEP, HISTORY_MIN_FOR_REAL_CURVE,
+    FX_FALLBACK,
+)
+
 # ─── Portfolio Definition ────────────────────────────────────────────────────
 
 PORTFOLIO = [
@@ -34,7 +45,7 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
 
 # ─── Helper / Signal Functions ────────────────────────────────────────────────
 
-def calc_rsi(closes, period=14):
+def calc_rsi(closes, period=RSI_PERIOD):
     """RSI 14-day Wilder smoothing."""
     if len(closes) < period + 1:
         return None
@@ -96,7 +107,7 @@ def tech_signal(price, ma150, rsi):
         return "HOLD"
     if price < ma150:
         return "SELL"
-    if rsi is not None and rsi > 70:
+    if rsi is not None and rsi > RSI_OVERBOUGHT:
         return "HOLD"  # overbought
     return "BUY"
 
@@ -109,9 +120,9 @@ def fund_signal(pe):
     """
     if pe is None:
         return "N/A"
-    if pe < 20:
+    if pe < PE_CHEAP:
         return "BUY"
-    if pe <= 35:
+    if pe <= PE_FAIR:
         return "HOLD"
     return "SELL"
 
@@ -141,7 +152,7 @@ def fmt_vol(vol_list):
         return f"{recent/1_000:.0f}K"
     return str(int(recent))
 
-def fmt_avg_vol(vol_list, days=20):
+def fmt_avg_vol(vol_list, days=EXTREME_DAYS):
     """Average volume over last N days."""
     vals = [v for v in vol_list if v][-days:]
     if not vals:
@@ -165,7 +176,7 @@ def fetch_usd_ils():
         closes = [c for c in closes if c is not None]
         return round(closes[-1], 4)
     except Exception:
-        return 3.65  # fallback
+        return FX_FALLBACK
 
 def fetch_index(ticker, name_he):
     """Fetch index close, daily change, week/month/ytd, and 90-day closes."""
@@ -185,8 +196,8 @@ def fetch_index(ticker, name_he):
         prev = closes[-2]
         day_pct = (last - prev) / prev * 100
 
-        week_pct = (last / closes[-6] - 1) * 100 if len(closes) >= 6 else None
-        month_pct = (last / closes[-22] - 1) * 100 if len(closes) >= 22 else None
+        week_pct = (last / closes[-(WEEK_DAYS)] - 1) * 100 if len(closes) >= WEEK_DAYS else None
+        month_pct = (last / closes[-(MONTH_DAYS)] - 1) * 100 if len(closes) >= MONTH_DAYS else None
 
         # YTD: find first close of current year
         current_year = datetime.datetime.now().year
@@ -235,13 +246,13 @@ def fetch_stock(ticker, shares, currency, usd_ils):
         last_close  = closes[-1]
         prev_close  = closes[-2]
         day_pct     = (last_close - prev_close) / prev_close * 100
-        n           = min(len(closes), 150)
+        n           = min(len(closes), MA_WINDOW)
         ma150       = sum(closes[-n:]) / n
         pct_ma150   = (last_close - ma150) / ma150 * 100
 
         # Week/month/year pct
-        week_pct  = (last_close / closes[-6]  - 1) * 100 if len(closes) >= 6  else None
-        month_pct = (last_close / closes[-22] - 1) * 100 if len(closes) >= 22 else None
+        week_pct  = (last_close / closes[-WEEK_DAYS]  - 1) * 100 if len(closes) >= WEEK_DAYS  else None
+        month_pct = (last_close / closes[-MONTH_DAYS] - 1) * 100 if len(closes) >= MONTH_DAYS else None
         year_pct  = (last_close / closes[0]   - 1) * 100 if len(closes) >= 2  else None
 
         # RSI
@@ -252,7 +263,7 @@ def fetch_stock(ticker, shares, currency, usd_ils):
         vol_raw_90 = volumes[-90:] if len(volumes) >= 90 else volumes
 
         # Support/resistance (last 20 closes, raw price units)
-        last_20 = closes[-20:]
+        last_20 = closes[-EXTREME_DAYS:]
         support    = min(last_20) if last_20 else None
         resistance = max(last_20) if last_20 else None
 
@@ -279,7 +290,7 @@ def fetch_stock(ticker, shares, currency, usd_ils):
             "month_pct":    month_pct,
             "year_pct":     year_pct,
             "ma150":        ma150,
-            "ma_days":      n,   # actual window used; < 150 means not a true MA150
+            "ma_days":      n,   # actual window used; < MA_WINDOW = a shorter average
             "pct_ma150":    pct_ma150,
             "rsi":          rsi,
             "price_ils":    price_ils,
@@ -315,12 +326,12 @@ def fetch_news(ticker):
     try:
         search_q = ticker.replace('.TA', '')
         url = (f"https://query1.finance.yahoo.com/v1/finance/search"
-               f"?q={search_q}&newsCount=6&quotesCount=0&enableFuzzyQuery=false")
+               f"?q={search_q}&newsCount={NEWS_FETCH_COUNT}&quotesCount=0&enableFuzzyQuery=false")
         r = requests.get(url, headers=HEADERS, timeout=10)
         if r.status_code != 200:
             return []
         items = r.json().get("news", [])
-        cutoff = datetime.datetime.now().timestamp() - 48 * 3600
+        cutoff = datetime.datetime.now().timestamp() - NEWS_WINDOW_HOURS * 3600
         results = []
         for item in items:
             if item.get("providerPublishTime", 0) >= cutoff:
@@ -331,7 +342,7 @@ def fetch_news(ticker):
                     "publisher": item.get("publisher", ""),
                     "ts":        item.get("providerPublishTime", 0),
                 })
-        return results[:4]
+        return results[:NEWS_SHOW_COUNT]
     except Exception:
         return []
 
@@ -340,14 +351,73 @@ def fetch_news(ticker):
 def signal(pct_ma150):
     if pct_ma150 is None:
         return "neutral", "לא ידוע", "⚪"
-    if pct_ma150 >= 10:
+    if pct_ma150 >= BAND_BULLISH:
         return "bullish",  "BULLISH 🟢", "🟢"
-    elif pct_ma150 >= 0:
+    elif pct_ma150 >= BAND_NEUTRAL:
         return "neutral",  "NEUTRAL 🟡", "🟡"
-    elif pct_ma150 >= -10:
+    elif pct_ma150 >= BAND_WARNING:
         return "warning",  "WATCH 🟠",   "🟠"
     else:
         return "bearish",  "BEARISH 🔴", "🔴"
+
+# ─── Alerts (single engine) ───────────────────────────────────────────────────
+
+def build_alerts(rows, total_val, events=None):
+    """The one alert engine. Every channel renders from this list.
+
+    There used to be three: the HTML fired a sharp-move alert at 5% while
+    WhatsApp used 7%, and the RSI alerts existed only inside data.json, so the
+    same position could warrant an alert in one channel and not another.
+
+    Returns dicts with a `level` (high/med/low) that drives colour, plus the
+    plain-text `msg` each channel formats however it likes.
+    """
+    alerts = []
+
+    # Crossings first — they are the Micho trigger and outrank standing state.
+    for kind, text in (events or []):
+        if kind in ("cross_down", "cross_up"):
+            alerts.append({
+                "level": "high" if kind == "cross_down" else "low",
+                "kind":  kind,
+                "sym":   "",
+                "flag":  "🔴" if kind == "cross_down" else "🟢",
+                "msg":   re.sub(r"<[^>]+>", "", text).lstrip("🔴🟢 "),
+                "html":  text,
+            })
+
+    for r in rows:
+        sym     = r["ticker"].replace(".TA", "")
+        sk, _, _ = signal(r.get("pct_ma150"))
+        ma      = r.get("pct_ma150") or 0
+        day     = r.get("day_pct") or 0
+        rsi     = r.get("rsi")
+        weight  = (r.get("val_ils") or 0) / total_val * 100 if total_val else 0
+
+        def add(level, flag, msg, kind):
+            alerts.append({"level": level, "kind": kind, "sym": sym,
+                           "flag": flag, "msg": msg,
+                           "html": f"{flag} <b>{sym}</b> — {msg}"})
+
+        if sk == "bearish" and weight >= ALERT_WEIGHT_PCT:
+            add("high", "🔴",
+                f"מתחת MA150 ב-{abs(ma):.1f}% | חשיפה {weight:.1f}% מהתיק "
+                f"({fmt_ils(r['val_ils'])})", "below_ma")
+        elif sk in ("bearish", "warning") and abs(day) >= ALERT_DAY_MOVE_PCT:
+            add("med", "🟠", f"שינוי חד: {fmt_pct(day)} ביום", "sharp_move")
+        elif sk == "bullish" and ma >= ALERT_STRONG_BULL_PCT:
+            add("low", "🟢", f"{fmt_pct(ma)} מעל MA150 | ביצוע חזק", "strong")
+
+        # RSI is independent of the MA band, so it is not part of the chain above.
+        if rsi is not None and rsi > RSI_OVERBOUGHT:
+            add("med", "🟡", f"RSI={rsi:.0f} — אזור קניית יתר", "overbought")
+        elif rsi is not None and rsi < RSI_OVERSOLD:
+            add("med", "🔵", f"RSI={rsi:.0f} — אזור מכירת יתר", "oversold")
+
+    order = {"high": 0, "med": 1, "low": 2}
+    alerts.sort(key=lambda a: order.get(a["level"], 3))
+    return alerts
+
 
 # ─── HTML Generation ──────────────────────────────────────────────────────────
 
@@ -415,7 +485,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
 
     # Caveats belong in the report, not only in the covering email — whoever opens
     # the Pages URL directly should see the same warnings.
-    short_ma = [r["ticker"] for r in rows if r.get("ma_days", 150) < 150]
+    short_ma = [r["ticker"] for r in rows if r.get("ma_days", MA_WINDOW) < MA_WINDOW]
     caveats  = []
     if failed:
         caveats.append(f"<b>{len(failed)} מניות לא נמשכו ({', '.join(failed)})</b> — "
@@ -447,6 +517,8 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
   <div class="section-header">🔄 מה השתנה מאז הדוח הקודם</div>
   <div style="padding:14px 16px;">{body}</div>
 </div>"""
+
+    alert_list = build_alerts(rows, total_val, events)
 
     trust_banner = ""
     if caveats:
@@ -516,7 +588,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
 
         # NASA-style short history must not silently pass as a real MA150.
         ma_txt = fmt_pct(r.get("pct_ma150"))
-        if r.get("ma_days", 150) < 150:
+        if r.get("ma_days", MA_WINDOW) < MA_WINDOW:
             ma_txt += f'<span style="font-size:10px;color:var(--muted);">*</span>'
 
         table_rows_html += f"""
@@ -1021,26 +1093,12 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
   <div class="section-header">⚡ התראות</div>
   <div style="padding: 16px 20px;">
 """
-    alerts = []
-    for r in rows:
-        sk, _, _ = signal(r.get("pct_ma150"))
-        pct_val = r.get("val_ils", 0) / total_val * 100 if total_val else 0
-        if sk == "bearish" and pct_val >= 5:
-            alerts.append(("red",
-                f"🔴 {r['ticker']} ({r['name']}) — מתחת MA150 ב-{abs(r.get('pct_ma150') or 0):.1f}% | "
-                f"חשיפה: {pct_val:.1f}% מהתיק ({fmt_ils(r['val_ils'])})"))
-        elif sk in ("bearish", "warning") and abs(r.get("day_pct") or 0) >= 5:
-            alerts.append(("yellow",
-                f"🟠 {r['ticker']} — שינוי חד: {fmt_pct(r.get('day_pct'))} ביום"))
-        elif sk == "bullish" and (r.get("pct_ma150") or 0) >= 20:
-            alerts.append(("green",
-                f"🟢 {r['ticker']} ({r['name']}) — {fmt_pct(r.get('pct_ma150'))} מעל MA150 | ביצוע חזק"))
-
-    if not alerts:
-        alerts.append(("green", "✅ אין התראות מיוחדות היום"))
-
-    for alert_type, msg in alerts:
-        html += f'    <div class="alert alert-{alert_type}">{msg}</div>\n'
+    css_of = {"high": "red", "med": "yellow", "low": "green"}
+    if alert_list:
+        for a in alert_list:
+            html += f'    <div class="alert alert-{css_of.get(a["level"], "green")}">{a["html"]}</div>\n'
+    else:
+        html += '    <div class="alert alert-green">✅ אין התראות מיוחדות היום</div>\n'
 
     html += f"""  </div>
 </div>
@@ -1051,7 +1109,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
     stocks_with_news = [(r, nd.get(r['ticker'], [])) for r in rows if nd.get(r['ticker'])]
 
     html += '<div class="section">\n'
-    html += '  <div class="section-header">📰 חדשות עדכניות — 48 שעות אחרונות</div>\n'
+    html += f'  <div class="section-header">📰 חדשות עדכניות — {NEWS_WINDOW_HOURS} שעות אחרונות</div>\n'
     html += '  <div style="padding: 16px 20px;">\n'
 
     if not stocks_with_news:
@@ -1106,6 +1164,7 @@ def generate_html(rows, indices, usd_ils, report_date, news_data=None, failed=No
         "total_pnl": total_pnl,
         "total_pnl_pct": total_pnl_pct,
         "no_basis": no_basis,
+        "alerts": alert_list,
     }
 
 # ─── Performance History ──────────────────────────────────────────────────────
@@ -1119,12 +1178,12 @@ def build_perf_history(rows, indices, usd_ils, history=None):
     basket, which made the line jump. It is only used before enough history
     accumulates, and the result is flagged so the viewer can label it.
     """
-    n = 90
+    n = CHART_DAYS
     synthetic = True
     port_vals = []
 
     recorded = [h for h in (history or []) if h.get("total_val")]
-    if len(recorded) >= 30:
+    if len(recorded) >= HISTORY_MIN_FOR_REAL_CURVE:
         port_vals = [h["total_val"] for h in recorded[-n:]]
         synthetic = False
     else:
@@ -1165,7 +1224,8 @@ def build_perf_history(rows, indices, usd_ils, history=None):
 
 # ─── data.json Generation ─────────────────────────────────────────────────────
 
-def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, history=None):
+def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, history=None,
+                       events=None):
     now = datetime.datetime.now()
     months_he = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"]
     as_of = f"{now.day} ב{months_he[now.month-1]} {now.year}, {now.strftime('%H:%M')} IDT"
@@ -1206,6 +1266,7 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, hist
         rsi = r.get("rsi")
         pe = r.get("pe")
         pnl_ils, pnl_pct, _ = position_pnl(r)
+        band_key, band_label, _ = signal(r.get("pct_ma150"))
         tech = tech_signal(r["last_close"], r["ma150"], rsi)
         fund = fund_signal(pe)
         verd = verdict_signal(tech, fund)
@@ -1257,6 +1318,11 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, hist
             "weight":   round(r["val_ils"] / nav * 100, 2) if nav and r.get("val_ils") else 0,
             "aboveMA":  (r.get("pct_ma150") or 0) >= 0,
             "maDelta":  round(r.get("pct_ma150") or 0, 2),
+            # The Micho band is the headline signal; verdict is the secondary,
+            # partly-fundamental read and the two can legitimately disagree.
+            "band":      band_key,
+            "bandLabel": band_label,
+            "techOnly":  fund == "N/A",
             "pl":       round(pnl_ils, 2) if pnl_ils is not None else 0,
             "plPct":    round(pnl_pct, 2) if pnl_pct is not None else 0,
         }
@@ -1265,23 +1331,11 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, hist
     # perfHistory — 90-day normalized portfolio
     perf = build_perf_history(rows, indices, usd_ils, history=history)
 
-    # alerts
-    alerts = []
-    total_val = sum(r.get("val_ils", 0) for r in rows)
-    for r in rows:
-        sym = r["ticker"].replace(".TA", "")
-        pct_val = r.get("val_ils", 0) / total_val * 100 if total_val else 0
-        rsi_val = r.get("rsi")
-        ma_pct = r.get("pct_ma150", 0) or 0
-        if ma_pct < -10 and pct_val >= 5:
-            alerts.append({"level": "high", "sym": sym,
-                          "msg": f"מתחת MA150 ב-{abs(ma_pct):.1f}% | {pct_val:.1f}% מהתיק", "flag": "🔴"})
-        elif rsi_val and rsi_val > 70:
-            alerts.append({"level": "med", "sym": sym,
-                          "msg": f"RSI={rsi_val:.0f} — אזור overbought", "flag": "🟡"})
-        elif rsi_val and rsi_val < 30:
-            alerts.append({"level": "med", "sym": sym,
-                          "msg": f"RSI={rsi_val:.0f} — אזור oversold", "flag": "🔵"})
+    # Same engine the report and WhatsApp render from — this used to be a third
+    # implementation with its own thresholds.
+    total_val = sum(r["val_ils"] for r in rows if r.get("val_ils") is not None)
+    alerts = [{k: a[k] for k in ("level", "sym", "msg", "flag")}
+              for a in build_alerts(rows, total_val, events)]
 
     # The terminal reads D.totals in four places; its absence was a hard crash.
     prev_nav = sum(r["prev_val_ils"] for r in rows if r.get("prev_val_ils") is not None)
@@ -1315,7 +1369,6 @@ def generate_data_json(rows, indices, usd_ils, report_date, news_data=None, hist
 # ─── Day-over-day history ─────────────────────────────────────────────────────
 
 HISTORY_PATH = Path(__file__).parent / "history.json"
-HISTORY_KEEP = 250
 
 
 def load_history():
@@ -1631,7 +1684,7 @@ def main():
 
     # Generate data.json for Bloomberg Terminal viewer
     data_json_path = generate_data_json(rows, indices, usd_ils, today, news_data,
-                                        history=hist)
+                                        history=hist, events=events)
 
     summary["data_json_path"] = data_json_path
     return str(out_path), summary

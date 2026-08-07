@@ -325,7 +325,9 @@ function Positions({ onSelect, selected }) {
                   </td>
                   <td className="n num">{fmt(p.weight, 1)}%</td>
                   <td><Spark data={spark} color={sparkColor} /></td>
-                  <td><span className={"tag " + p.verdict}>{p.verdict}</span></td>
+                  {/* The Micho band is the headline signal — it must match the
+                      emailed report. verdict lives in the detail panel. */}
+                  <td><span className={"tag band-" + p.band}>{p.bandLabel}</span></td>
                 </tr>
               );
             })}
@@ -373,7 +375,7 @@ function StockDetail({ sym }) {
                   {sign(p.day)}{fmt(p.day)}% היום
                 </div>
               </div>
-              <span className={"tag " + p.verdict} style={{ fontSize: 14, padding: "6px 14px" }}>{p.verdict}</span>
+              <span className={"tag band-" + p.band} style={{ fontSize: 14, padding: "6px 14px" }}>{p.bandLabel}</span>
             </div>
             <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
               <tbody>
@@ -395,11 +397,18 @@ function StockDetail({ sym }) {
             </table>
           </div>
           <div>
-            <div className="dim" style={{ fontSize: 10, letterSpacing: ".1em", marginBottom: 6 }}>SIGNALS · אותות</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 12 }}>
+            <div className="dim" style={{ fontSize: 10, letterSpacing: ".1em", marginBottom: 6 }}>
+              SIGNALS · אותות משניים
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 6 }}>
               <SignalCell label="טכני" value={p.tech} />
               <SignalCell label="פונדמנטלי" value={p.fund} />
               <SignalCell label="מסקנה" value={p.verdict} primary />
+            </div>
+            <div className="dim" style={{ fontSize: 10, marginBottom: 12, lineHeight: 1.6 }}>
+              הסיגנל הראשי הוא רמת מיכו למעלה ({p.bandLabel}). אלה אותות משניים
+              ועשויים לחלוק עליו.
+              {p.techOnly && " אין P/E זמין — המסקנה טכנית בלבד."}
             </div>
             <div className="dim" style={{ fontSize: 10, letterSpacing: ".1em", marginBottom: 6 }}>READOUT · קריאה</div>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", fontFamily: "Heebo", fontSize: 12, lineHeight: 1.7 }}>

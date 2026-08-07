@@ -6826,9 +6826,9 @@
  },
  {
   "date": "2026-08-07",
-  "total_val": 167389.74,
-  "day_pct": 1.54,
-  "fx": 3.0034,
+  "total_val": 167228.66,
+  "day_pct": 1.28,
+  "fx": 3.0041,
   "positions": {
    "AMZN": {
     "qty": 62,
@@ -6836,15 +6836,15 @@
     "pct_ma150": 14.42,
     "band": "bullish",
     "rsi": 63.2,
-    "val_ils": 50697.75
+    "val_ils": 50709.57
    },
    "ACCL.TA": {
     "qty": 14789,
-    "price": 2.33,
-    "pct_ma150": 16.13,
+    "price": 2.319,
+    "pct_ma150": 15.44,
     "band": "bullish",
-    "rsi": 57.0,
-    "val_ils": 34458.37
+    "rsi": 56.6,
+    "val_ils": 34295.69
    },
    "JOBY": {
     "qty": 840,
@@ -6852,15 +6852,15 @@
     "pct_ma150": -17.67,
     "band": "bearish",
     "rsi": 54.1,
-    "val_ils": 20763.1
+    "val_ils": 20767.94
    },
    "MLSR.TA": {
     "qty": 37,
-    "price": 403.0,
-    "pct_ma150": -6.02,
+    "price": 402.3,
+    "pct_ma150": -6.16,
     "band": "warning",
-    "rsi": 44.8,
-    "val_ils": 14911.0
+    "rsi": 44.5,
+    "val_ils": 14885.1
    },
    "NASA": {
     "qty": 190,
@@ -6868,7 +6868,7 @@
     "pct_ma150": -18.6,
     "band": "bearish",
     "rsi": 47.5,
-    "val_ils": 13775.39
+    "val_ils": 13778.6
    },
    "TSLA": {
     "qty": 14,
@@ -6876,7 +6876,7 @@
     "pct_ma150": -19.62,
     "band": "bearish",
     "rsi": 36.9,
-    "val_ils": 13435.47
+    "val_ils": 13438.6
    },
    "BMNR": {
     "qty": 234,
@@ -6884,7 +6884,7 @@
     "pct_ma150": -11.11,
     "band": "bearish",
     "rsi": 58.1,
-    "val_ils": 12861.16
+    "val_ils": 12864.16
    },
    "QCOM": {
     "qty": 8,
@@ -6892,7 +6892,7 @@
     "pct_ma150": -4.24,
     "band": "warning",
     "rsi": 41.9,
-    "val_ils": 3853.72
+    "val_ils": 3854.62
    },
    "META": {
     "qty": 1,
@@ -6900,7 +6900,7 @@
     "pct_ma150": -5.5,
     "band": "warning",
     "rsi": 47.0,
-    "val_ils": 1771.71
+    "val_ils": 1772.12
    },
    "ORCL": {
     "qty": 0.8,
@@ -6908,7 +6908,7 @@
     "pct_ma150": -13.16,
     "band": "bearish",
     "rsi": 53.9,
-    "val_ils": 344.72
+    "val_ils": 344.8
    },
    "MARA": {
     "qty": 9,
@@ -6916,7 +6916,7 @@
     "pct_ma150": -2.99,
     "band": "warning",
     "rsi": 41.1,
-    "val_ils": 287.88
+    "val_ils": 287.94
    },
    "PLTR": {
     "qty": 0.49,
@@ -6924,7 +6924,7 @@
     "pct_ma150": 9.28,
     "band": "neutral",
     "rsi": 66.4,
-    "val_ils": 229.46
+    "val_ils": 229.52
    }
   }
  }
