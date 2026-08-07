@@ -287,7 +287,9 @@ def send_email(html_path: str, subject: str, total_val: float, day_pct: float,
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(GMAIL_USER, GMAIL_PASSWORD)
             server.sendmail(GMAIL_USER, SEND_TO_EMAIL, msg.as_bytes())
-        print(f"✅ מייל נשלח ל-{SEND_TO_EMAIL} → {report_url}")
+        # Don't print a URL that isn't being served — it reads as a working link.
+        where = report_url if published else f"{len(msg.get_payload()) - 1} קבצים מצורפים"
+        print(f"✅ מייל נשלח ל-{SEND_TO_EMAIL} → {where}")
         return True
     except Exception as e:
         print(f"❌ שגיאת מייל: {e}")
