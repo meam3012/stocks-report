@@ -72,7 +72,7 @@ FX_FALLBACK = 3.05
 # the URL. Set this False to keep everything private: the report and the
 # standalone terminal are then attached to the email instead, and the repo is
 # still committed to daily so history.json keeps accumulating.
-PUBLISH_TO_PAGES = True
+PUBLISH_TO_PAGES = False
 
 GITHUB_PAGES_BASE = "https://meam3012.github.io/stocks-report"
 SEND_TO_EMAIL     = "meam3012@gmail.com"

@@ -64,11 +64,17 @@ def _merge_history(pulled_path: Path, ours_blob: bytes) -> bytes:
     return json.dumps(out, ensure_ascii=False, indent=1).encode("utf-8")
 
 
-def publish_report(html_path: str) -> bool:
-    """Commit + push the report so its GitHub Pages URL actually resolves.
+def publish_report(html_path: str, verify_live: bool = True) -> bool:
+    """Commit + push this run's output, and optionally confirm it is served.
 
-    Without this the email links to a file that only exists on this machine.
-    Returns True only once the URL is confirmed live.
+    The commit is NOT optional even when publishing is off. The Action checks
+    out fresh every morning, so history.json only survives between runs because
+    it is pushed — skipping the commit would silently reset the day-over-day
+    comparison and the equity curve forever.
+
+    verify_live=False stops after pushing: nothing is served, so there is no URL
+    to confirm and the email carries the report as an attachment instead.
+    Returns True only when a live URL was confirmed.
     """
     name = Path(html_path).name
 
@@ -108,6 +114,10 @@ def publish_report(html_path: str) -> bool:
         return False
     except Exception as e:
         print(f"❌ פרסום ל-GitHub נכשל: {e}")
+        return False
+
+    if not verify_live:
+        print("✅ הנתונים נדחפו (ההיסטוריה נשמרת) — ללא פרסום פומבי")
         return False
 
     # Pages needs a moment to rebuild — confirm before we promise the link works.
@@ -438,11 +448,15 @@ def main():
     indices = [fetch_index("^GSPC", "S&P 500"), fetch_index("^TA125.TA", "TA-125")]
     time.sleep(0.2)
 
-    # 2. Publish so the emailed link actually resolves
+    # 2. Push this run's output. The commit happens whether or not the report is
+    #    published — history.json only survives between Action runs because of it.
+    #    Only --no-publish skips git entirely (local test runs).
     published = False
-    if args.no_publish or not PUBLISH_TO_PAGES:
-        why = "--no-publish" if args.no_publish else "PUBLISH_TO_PAGES=False"
-        print(f"\n⏭️  מדלג על פרסום ({why}) — הדוח יצורף למייל")
+    if args.no_publish:
+        print("\n⏭️  מדלג על git לגמרי (--no-publish) — הדוח יצורף למייל")
+    elif not PUBLISH_TO_PAGES:
+        print("\n🔒 שומר נתונים בלי לפרסם (PUBLISH_TO_PAGES=False)...")
+        publish_report(html_path, verify_live=False)
     else:
         print("\n🚀 מפרסם ל-GitHub Pages...")
         published = publish_report(html_path)
