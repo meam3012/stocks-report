@@ -13171,5 +13171,109 @@
     "val_ils": 194.87
    }
   }
+ },
+ {
+  "date": "2026-10-27",
+  "total_val": 151976.12,
+  "day_pct": 0.59,
+  "fx": 3.0592,
+  "positions": {
+   "AMZN": {
+    "qty": 62,
+    "price": 249.09,
+    "pct_ma150": -0.77,
+    "band": "warning",
+    "rsi": 44.3,
+    "val_ils": 47245.0
+   },
+   "ACCL.TA": {
+    "qty": 14789,
+    "price": 1.784,
+    "pct_ma150": -12.83,
+    "band": "bearish",
+    "rsi": 52.6,
+    "val_ils": 26383.58
+   },
+   "TSLA": {
+    "qty": 14,
+    "price": 391.62,
+    "pct_ma150": 3.94,
+    "band": "neutral",
+    "rsi": 60.1,
+    "val_ils": 16772.61
+   },
+   "MLSR.TA": {
+    "qty": 37,
+    "price": 418.2,
+    "pct_ma150": 0.39,
+    "band": "neutral",
+    "rsi": 64.3,
+    "val_ils": 15473.4
+   },
+   "BMNR": {
+    "qty": 234,
+    "price": 20.95,
+    "pct_ma150": 2.47,
+    "band": "neutral",
+    "rsi": 38.0,
+    "val_ils": 14997.12
+   },
+   "JOBY": {
+    "qty": 840,
+    "price": 4.69,
+    "pct_ma150": -41.72,
+    "band": "bearish",
+    "rsi": 26.8,
+    "val_ils": 12052.02
+   },
+   "NASA": {
+    "qty": 190,
+    "price": 20.53,
+    "pct_ma150": -24.99,
+    "band": "bearish",
+    "rsi": 36.2,
+    "val_ils": 11933.02
+   },
+   "QCOM": {
+    "qty": 8,
+    "price": 179.6,
+    "pct_ma150": 1.18,
+    "band": "neutral",
+    "rsi": 51.8,
+    "val_ils": 4395.46
+   },
+   "META": {
+    "qty": 1,
+    "price": 630.56,
+    "pct_ma150": 0.59,
+    "band": "neutral",
+    "rsi": 33.6,
+    "val_ils": 1929.01
+   },
+   "ORCL": {
+    "qty": 0.8,
+    "price": 126.06,
+    "pct_ma150": -19.73,
+    "band": "bearish",
+    "rsi": 39.1,
+    "val_ils": 308.51
+   },
+   "PLTR": {
+    "qty": 0.49,
+    "price": 198.84,
+    "pct_ma150": 29.18,
+    "band": "bullish",
+    "rsi": 56.1,
+    "val_ils": 298.06
+   },
+   "MARA": {
+    "qty": 9,
+    "price": 6.84,
+    "pct_ma150": -40.42,
+    "band": "bearish",
+    "rsi": 23.4,
+    "val_ils": 188.32
+   }
+  }
  }
 ]
